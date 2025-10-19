@@ -1,0 +1,246 @@
+@import '@xyflow/react/dist/style.css';
+
+/* === LIGHT (varsayılan) === */
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --text: #0b0f19;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --ring: rgba(99,102,241,.22);
+  --accent: #2563eb;
+
+  --status-idle: #9ca3af;    /* gri */
+  --status-running: #f59e0b; /* sarı */
+  --status-success: #10b981; /* yeşil */
+  --status-fail: #ef4444;    /* kırmızı */
+
+  --radius: 12px;
+  --shadow-lg: 0 10px 24px rgba(15, 23, 42, .08);
+}
+
+/* === DARK === */
+:root[data-theme="dark"]{
+  --bg: #0c1222;
+  --surface: #0f172a;
+  --surface-2: #111827;
+  --text: #e5e7eb;
+  --muted: #9aa4b2;
+  --border: #1f2937;
+  --ring: rgba(56, 189, 248, .35);
+  --accent: #22d3ee;
+
+  --status-idle: #64748b;
+  --status-running: #f59e0b;
+  --status-success: #34d399;
+  --status-fail: #f87171;
+
+  --shadow-lg: 0 10px 28px rgba(0,0,0,.35);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui; }
+
+/* Shell: Sidebar (sol) + Main (sağ) */
+.shell {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100vh;
+}
+
+/* === Inspector (Sidebar) === */
+.inspector {
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  border-right: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface) 92%, var(--bg) 8%);
+}
+.inspector__top {
+  display:flex; align-items:center; gap:8px;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.inspector__body { overflow: auto; padding: 12px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 12px;
+}
+.card .section { padding:12px 14px; border-top:1px solid var(--border); }
+.card .section:first-child { border-top: 0; }
+.card h4 { margin:0 0 10px 0; font-size:13px; color: color-mix(in oklab, var(--text) 85%, #000 15%); }
+.row { display:grid; grid-template-columns:1fr 2fr; gap:10px; }
+.small { font-size:12px; color: var(--muted); }
+.kv-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:8px; }
+.linked-input { display:flex; gap:8px; }
+.linked-input > .btn { padding: 0 10px; }
+.scroll-area {
+  max-height: 220px; overflow: auto;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px; background: var(--surface-2);
+}
+.scroll-area::-webkit-scrollbar { width: 10px; height:10px; }
+.scroll-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+:root[data-theme="dark"] .scroll-area::-webkit-scrollbar-thumb { background: #334155; }
+.scroll-area::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+:root[data-theme="dark"] .scroll-area::-webkit-scrollbar-thumb:hover { background: #475569; }
+.json-row { display:flex; align-items:center; gap:8px; margin:2px 0; }
+.json-row code { font-size:12px; }
+.json-row .path { color: var(--accent); }
+.json-row .val { color: var(--text); }
+.json-row .ghost { color: var(--muted); }
+
+/* Toolbar (sağ üst) */
+.app__toolbar {
+  display:flex; gap:10px; align-items:center;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1000;
+}
+
+/* Canvas sarmalayıcı */
+.main { display: grid; grid-template-rows: 56px 1fr; }
+.flow-wrap { position: relative; z-index: 1; height: 100%; width: 100%; }
+
+/* Buton & inputlar */
+.btn {
+  appearance:none; border:1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding:8px 12px; border-radius:10px; cursor:pointer;
+  box-shadow: var(--shadow-lg);
+  transition: box-shadow .2s, border-color .2s, transform .06s, background .2s;
+}
+.btn:hover { border-color: color-mix(in oklab, var(--border) 50%, var(--accent) 50%); box-shadow: 0 0 0 4px var(--ring); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); color: #fff; border-color: color-mix(in oklab, var(--accent) 70%, #000 30%); }
+.btn.icon { padding: 6px; width:32px; height:32px; display:grid; place-items:center; border-radius:8px; }
+.btn.danger { background: #ef4444; color: #fff; border-color: #dc2626; }
+.btn.danger:hover { box-shadow: 0 0 0 4px rgba(239,68,68,.22); border-color: #b91c1c; }
+
+.btn.loading {
+  pointer-events: none;
+  opacity: .85;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+
+input, select, textarea {
+  width:100%; background: var(--surface-2); color: var(--text);
+  border:1px solid var(--border); border-radius:10px; padding:10px 12px; outline:none;
+  transition: box-shadow .2s, border-color .2s;
+}
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); border-color: color-mix(in oklab, var(--border) 70%, var(--accent) 30%); }
+textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+
+/* === Dark mode switch === */
+.switch {
+  display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px;
+  border:1px solid var(--border); background: var(--surface);
+}
+.switch input { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: var(--surface-2); position: relative; outline: none; border:1px solid var(--border); }
+.switch input::after { content:""; position:absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 999px; background: var(--text); transition: transform .2s; }
+.switch input:checked::after { transform: translateX(16px); }
+
+/* === Spinner === */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid color-mix(in oklab, var(--text) 30%, transparent 70%);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* === Node (canvas’taki mini görünüm) — TAM ARKA PLAN RENK === */
+.node-mini {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 220px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+/* ŞERİTİ KALDIR */
+.node-mini::before { display: none !important; }
+
+/* Tam arka plan renkleri (duruma göre) */
+.node-mini.status-idle {
+  background: var(--status-idle);
+  border-color: var(--status-idle);
+  color: #111827; /* koyu metin */
+}
+.node-mini.status-running {
+  background: var(--status-running);
+  border-color: var(--status-running);
+  color: #111827;
+  animation: nodePulse 1s ease-in-out infinite;
+}
+.node-mini.status-success {
+  background: var(--status-success);
+  border-color: var(--status-success);
+  color: #ffffff;
+}
+.node-mini.status-fail {
+  background: var(--status-fail);
+  border-color: var(--status-fail);
+  color: #ffffff;
+}
+
+/* header ve tag’ler kontrastlı kalsın */
+.node-mini-header {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px;
+  border-bottom:1px solid var(--border);
+}
+.node-mini .title { font-weight:600; font-size: 13px; flex:1; }
+
+.node-mini.status-success .node-mini-header,
+.node-mini.status-fail .node-mini-header {
+  border-bottom-color: rgba(255,255,255,.25);
+}
+.node-mini.status-running .node-mini-header,
+.node-mini.status-idle .node-mini-header {
+  border-bottom-color: rgba(0,0,0,.12);
+}
+
+.node-mini .tag {
+  font-size:11px; padding:2px 6px; border:1px solid var(--border); border-radius:999px;
+  background:#eef2ff; color:#2563eb;
+}
+:root[data-theme="dark"] .node-mini .tag { background:#0b2a36; color:#67e8f9; border-color:#153447; }
+
+.node-mini.status-success .tag,
+.node-mini.status-fail .tag {
+  background: rgba(255,255,255,.18);
+  border-color: rgba(255,255,255,.3);
+  color: #fff;
+}
+.node-mini.status-running .tag,
+.node-mini.status-idle .tag {
+  background: rgba(0,0,0,.08);
+  border-color: rgba(0,0,0,.18);
+  color: #111827;
+}
+
+/* spinner zeminle uyumlu */
+.node-mini.status-success .spinner,
+.node-mini.status-fail .spinner {
+  border-color: rgba(255,255,255,.35);
+  border-top-color: #fff;
+}
+.node-mini.status-running .spinner,
+.node-mini.status-idle .spinner {
+  border-color: rgba(0,0,0,.25);
+  border-top-color: #111827;
+}
+
+/* running animasyonu */
+@keyframes nodePulse {
+  0%, 100% { transform: translateZ(0) scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.12); }
+  50% { transform: translateZ(0) scale(1.01); box-shadow: 0 10px 24px rgba(0,0,0,0.14); }
+}

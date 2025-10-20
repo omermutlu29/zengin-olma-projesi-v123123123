@@ -10,6 +10,11 @@ export default function InspectorSidebar({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef(null);
   
+  // Textarea referansları
+  const bodyTextareaRef = useRef(null);
+  const responseTextareaRef = useRef(null);
+  const prevNodeIdRef = useRef(null);
+  
   // Accordion state - varsayılan olarak Request ve Last Run açık
   const [expandedSections, setExpandedSections] = useState(() => {
     const saved = localStorage.getItem("sidebarExpandedSections");
@@ -35,6 +40,41 @@ export default function InspectorSidebar({
       [section]: !prev[section]
     }));
   };
+
+  // Node değiştiğinde textarea değerlerini kaydet
+  useEffect(() => {
+    const currentNodeId = selectedNode?.id;
+    
+    // Önceki node varsa ve yeni node farklıysa, önceki node'un değerlerini kaydet
+    if (prevNodeIdRef.current && prevNodeIdRef.current !== currentNodeId) {
+      // Body textarea'sını kaydet
+      if (bodyTextareaRef.current) {
+        try {
+          const bodyValue = bodyTextareaRef.current.value;
+          if (bodyValue) {
+            onChangeField(prevNodeIdRef.current, "body", JSON.parse(bodyValue));
+          }
+        } catch (e) {
+          // JSON parse hatası, kaydetme
+        }
+      }
+      
+      // Response textarea'sını kaydet
+      if (responseTextareaRef.current) {
+        try {
+          const responseValue = responseTextareaRef.current.value;
+          if (responseValue) {
+            onChangeField(prevNodeIdRef.current, "expected", JSON.parse(responseValue));
+          }
+        } catch (e) {
+          // JSON parse hatası, kaydetme
+        }
+      }
+    }
+    
+    // Şu anki node ID'sini kaydet
+    prevNodeIdRef.current = currentNodeId;
+  }, [selectedNode?.id, onChangeField]);
 
   // Resize handler
   const handleMouseDown = (e) => {
@@ -231,6 +271,7 @@ export default function InspectorSidebar({
             {expandedSections.body && (
               <div className="section-content">
                 <textarea
+                  ref={bodyTextareaRef}
                   key={`body-${id}`}
                   className="code"
                   defaultValue={JSON.stringify(body || {}, null, 2)}
@@ -258,6 +299,7 @@ export default function InspectorSidebar({
             {expandedSections.response && (
               <div className="section-content">
                 <textarea
+                  ref={responseTextareaRef}
                   key={`response-${id}`}
                   className="code"
                   defaultValue={JSON.stringify(expected || {}, null, 2)}

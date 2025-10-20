@@ -367,7 +367,7 @@ export default function App() {
     if (textOrObj == null) return textOrObj;
 
     if (typeof textOrObj === "string") {
-      return textOrObj.replace(/{{(req-\d+)\.([^}]+)}}/g, (_, refId, pth) => {
+      return textOrObj.replace(/{{(req-[^\s.}]+)\.([^}]+)}}/g, (_, refId, pth) => {
         const refNode = nodeMap.get(refId);
         const source = refNode?.data?.runtime?.response ?? refNode?.data?.expected;
         const val = getByPath({ response: source, body: refNode?.data?.body, expected: refNode?.data?.expected }, pth);

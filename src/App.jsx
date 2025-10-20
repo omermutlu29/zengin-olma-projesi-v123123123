@@ -8,6 +8,14 @@ import InspectorSidebar from "./components/InspectorSidebar";
 import HarImportModal from "./components/HarImportModal";
 import axios from "axios";
 
+// Axios interceptor - API URL'lerini proxy'ye yönlendir
+axios.interceptors.request.use((config) => {
+  if (config.url?.startsWith('https://api.wiyostb.com.tr')) {
+    config.url = config.url.replace('https://api.wiyostb.com.tr', '/api');
+  }
+  return config;
+});
+
 export default function App() {
   // Tema
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");

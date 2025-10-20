@@ -24,6 +24,25 @@ export default function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // Sidebar pozisyon ve genişlik
+  const [sidebarPosition, setSidebarPosition] = useState(() => {
+    const saved = localStorage.getItem("sidebarPosition") || "left";
+    // Eski top/bottom değerleri varsa left'e çevir
+    return (saved === "top" || saved === "bottom") ? "left" : saved;
+  });
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem("sidebarWidth");
+    return saved ? parseInt(saved, 10) : 450;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sidebarPosition", sidebarPosition);
+  }, [sidebarPosition]);
+
+  useEffect(() => {
+    localStorage.setItem("sidebarWidth", sidebarWidth.toString());
+  }, [sidebarWidth]);
+
   // State'ler
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -552,7 +571,7 @@ export default function App() {
   };
 
   return (
-    <div className="shell">
+    <div className={`shell shell--${sidebarPosition}`}>
       {/* ◀︎ Inspector Sidebar */}
       <InspectorSidebar
         selectedNode={useMemo(() => nodes.find((n)=>n.id===selectedId) || null, [nodes, selectedId])}
@@ -580,6 +599,10 @@ export default function App() {
         }}
         onChangeField={updateNodeField}
         onDelete={deleteNodeById}
+        position={sidebarPosition}
+        onPositionChange={setSidebarPosition}
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
       />
 
       {/* ▶︎ Main (Toolbar + Canvas) */}

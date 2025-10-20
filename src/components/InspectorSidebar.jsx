@@ -231,6 +231,7 @@ export default function InspectorSidebar({
             {expandedSections.body && (
               <div className="section-content">
                 <textarea
+                  key={`body-${id}`}
                   className="code"
                   defaultValue={JSON.stringify(body || {}, null, 2)}
                   onBlur={(e)=>{ try{ setField("body", JSON.parse(e.target.value||"{}")); } catch{} }}
@@ -257,6 +258,7 @@ export default function InspectorSidebar({
             {expandedSections.response && (
               <div className="section-content">
                 <textarea
+                  key={`response-${id}`}
                   className="code"
                   defaultValue={JSON.stringify(expected || {}, null, 2)}
                   onBlur={(e)=>{ try{ setField("expected", JSON.parse(e.target.value||"{}")); } catch{} }}

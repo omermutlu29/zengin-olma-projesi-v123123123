@@ -5,6 +5,7 @@ import {
 } from "@xyflow/react";
 import { nodeTypes } from "./flow/nodeTypes";
 import InspectorSidebar from "./components/InspectorSidebar";
+import HarImportModal from "./components/HarImportModal";
 import axios from "axios";
 
 export default function App() {
@@ -15,51 +16,109 @@ export default function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([
-    {
-      id: "req-1",
-      type: "custom",
-      position: { x: 420, y: 80 },
-      data: {
-        name: "List Posts",
-        order: 1,
-        method: "GET",
-        url: "https://jsonplaceholder.typicode.com/posts",
-        headers: {}, cookies: {}, queryParams: {},
-        body: {}, expected: {}, delay: 0,
-        assertions: { http: [], kafka: [], database: [], redis: [] },
-        runtime: { status: null, response: null, error: null, running: false }
-      },
-    },
-    {
-      id: "req-2",
-      type: "custom",
-      position: { x: 900, y: 320 },
-      data: {
-        name: "Get Post by 5th index id",
-        order: 2,
-        method: "GET",
-        url: "https://jsonplaceholder.typicode.com/posts/{{req-1.response[5].id}}",
-        headers: { "x-post-id": "{{req-1.response[5].id}}" },
-        cookies: {}, queryParams: {},
-        body: {}, expected: {}, delay: 200,
-        assertions: { http: [], kafka: [], database: [], redis: [] },
-        runtime: { status: null, response: null, error: null, running: false }
-      },
-    },
-  ]);
-
-  const [edges, setEdges, onEdgesChange] = useEdgesState([
-    { id: "e1", source: "req-1", target: "req-2", markerEnd: { type: MarkerType.ArrowClosed } },
-  ]);
-
-  const [selectedId, setSelectedId] = useState("req-1");
+  // State'ler
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const [selectedEdges, setSelectedEdges] = useState([]);
   const [linking, setLinking] = useState(null); // { nodeId, fieldPath }
   const [running, setRunning] = useState(false);
+  const [showHarModal, setShowHarModal] = useState(false);
   const rf = useRef(null);
 
+  // Undo/Redo & Clipboard
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [clipboard, setClipboard] = useState(null);
+  const initializedRef = useRef(false);
+
+  // History'ye snapshot ekle
+  const saveToHistory = useCallback(() => {
+    const snapshot = {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
+    };
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(snapshot);
+      // Max 50 history tut
+      if (newHistory.length > 50) newHistory.shift();
+      return newHistory;
+    });
+    setHistoryIndex((prev) => Math.min(prev + 1, 49));
+  }, [nodes, edges, historyIndex]);
+
+  // Undo
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setNodes(prevState.nodes);
+      setEdges(prevState.edges);
+      setHistoryIndex((prev) => prev - 1);
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Redo
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+      setHistoryIndex((prev) => prev + 1);
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Copy
+  const copySelected = useCallback(() => {
+    // Tüm seçili node'ları kopyala (hem tek seçim hem çoklu seçim)
+    const selectedNodes = nodes.filter((n) => n.selected || n.id === selectedId);
+    if (selectedNodes.length > 0) {
+      setClipboard({ nodes: selectedNodes });
+    }
+  }, [nodes, selectedId]);
+
+  // Paste
+  const pasteFromClipboard = useCallback(() => {
+    if (!clipboard?.nodes) return;
+
+    saveToHistory();
+    const maxOrder = Math.max(0, ...nodes.map((node) => node.data.order || 0));
+    const newNodes = clipboard.nodes.map((n, idx) => ({
+      ...n,
+      id: `${n.id}-copy-${Date.now()}-${idx}`,
+      selected: false,
+      position: {
+        x: n.position.x + 50,
+        y: n.position.y + 50,
+      },
+      data: {
+        ...n.data,
+        order: maxOrder + idx + 1,
+      },
+    }));
+    setNodes((nds) => [...nds, ...newNodes]);
+  }, [clipboard, nodes, setNodes, saveToHistory]);
+
+  // Select All
+  const selectAll = useCallback(() => {
+    // Tüm node'ları seçili hale getir
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: true,
+      }))
+    );
+    // Tüm edge'leri de seçili hale getir
+    setEdges((eds) =>
+      eds.map((e) => ({
+        ...e,
+        selected: true,
+      }))
+    );
+  }, [setNodes, setEdges]);
+
   const addNode = () => {
+    saveToHistory();
     const id = `req-${nodes.length + 1}`;
     setNodes((nds) => [
       ...nds,
@@ -81,6 +140,116 @@ export default function App() {
     ]);
   };
 
+  // HAR entries'lerini node formatına çevir
+  const importHarEntries = useCallback((harEntries) => {
+    saveToHistory();
+    const currentMaxOrder = Math.max(0, ...nodes.map(n => n.data.order || 0));
+    const startX = 100;
+    const startY = 100;
+    const spacingY = 180;
+
+    const newNodes = harEntries.map((entry, idx) => {
+      const req = entry.request || {};
+      const res = entry.response || {};
+      
+      // Headers'ı objeye çevir
+      const headers = {};
+      (req.headers || []).forEach(h => {
+        if (h.name && !h.name.startsWith(':')) { // HTTP/2 pseudo-headers'ları atla
+          headers[h.name] = h.value;
+        }
+      });
+
+      // Cookies'leri objeye çevir
+      const cookies = {};
+      (req.cookies || []).forEach(c => {
+        if (c.name) cookies[c.name] = c.value;
+      });
+
+      // Query parameters'ı objeye çevir
+      const queryParams = {};
+      (req.queryString || []).forEach(q => {
+        if (q.name) queryParams[q.name] = q.value;
+      });
+
+      // POST data varsa parse et
+      let body = {};
+      if (req.postData) {
+        try {
+          if (req.postData.mimeType?.includes('json')) {
+            body = JSON.parse(req.postData.text || '{}');
+          } else if (req.postData.params) {
+            req.postData.params.forEach(p => {
+              if (p.name) body[p.name] = p.value;
+            });
+          }
+        } catch (e) {
+          // JSON parse hatası, body'yi text olarak bırak
+          if (req.postData.text) {
+            body = { _raw: req.postData.text };
+          }
+        }
+      }
+
+      // Response data varsa parse et
+      let expected = {};
+      if (res.content?.text) {
+        try {
+          if (res.content.mimeType?.includes('json')) {
+            expected = JSON.parse(res.content.text);
+          }
+        } catch (e) {
+          // JSON değilse boş bırak
+        }
+      }
+
+      // URL'den isim oluştur
+      const urlObj = new URL(req.url);
+      const pathname = urlObj.pathname;
+      const urlName = pathname.split('/').filter(Boolean).pop() || urlObj.hostname;
+
+      return {
+        id: `req-har-${Date.now()}-${idx}`,
+        type: "custom",
+        position: {
+          x: startX + (idx % 3) * 320,
+          y: startY + Math.floor(idx / 3) * spacingY
+        },
+        data: {
+          name: `${req.method} ${urlName}`,
+          order: currentMaxOrder + idx + 1,
+          method: req.method || "GET",
+          url: req.url,
+          headers,
+          cookies,
+          queryParams,
+          body,
+          expected,
+          delay: 0,
+          assertions: { http: [], kafka: [], database: [], redis: [] },
+          runtime: { status: null, response: null, error: null, running: false }
+        }
+      };
+    });
+
+    // Node'ları ekle
+    setNodes((nds) => [...nds, ...newNodes]);
+
+    // Sıralı edge'ler oluştur (her node bir sonrakine bağlı)
+    if (newNodes.length > 1) {
+      const newEdges = [];
+      for (let i = 0; i < newNodes.length - 1; i++) {
+        newEdges.push({
+          id: `edge-har-${Date.now()}-${i}`,
+          source: newNodes[i].id,
+          target: newNodes[i + 1].id,
+          markerEnd: { type: MarkerType.ArrowClosed },
+        });
+      }
+      setEdges((eds) => [...eds, ...newEdges]);
+    }
+  }, [nodes, setNodes, setEdges, saveToHistory]);
+
   const updateNodeField = useCallback((nodeId, fieldPath, value) => {
     setNodes((nds) =>
       nds.map((n) => {
@@ -101,22 +270,40 @@ export default function App() {
 
   // SİLME
   const deleteNodeById = useCallback((id) => {
+    saveToHistory();
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
     setSelectedId((cur) => (cur === id ? null : cur));
-  }, []);
+  }, [saveToHistory, setNodes, setEdges, setSelectedId]);
 
   const deleteSelectedEdges = useCallback(() => {
     if (!selectedEdges?.length) return;
+    saveToHistory();
     const ids = new Set(selectedEdges.map((e) => e.id));
     setEdges((eds) => eds.filter((e) => !ids.has(e.id)));
     setSelectedEdges([]);
-  }, [selectedEdges]);
+  }, [selectedEdges, saveToHistory, setEdges]);
 
-  const deleteSelected = () => {
-    if (selectedEdges?.length) return deleteSelectedEdges();
-    if (selectedId) return deleteNodeById(selectedId);
-  };
+  const deleteSelected = useCallback(() => {
+    // Önce edge'leri kontrol et
+    const selectedEdgesList = edges.filter(e => e.selected);
+    if (selectedEdgesList.length > 0) {
+      saveToHistory();
+      const ids = new Set(selectedEdgesList.map((e) => e.id));
+      setEdges((eds) => eds.filter((e) => !ids.has(e.id)));
+      return;
+    }
+
+    // Sonra node'ları kontrol et (hem selected=true hem selectedId)
+    const selectedNodesList = nodes.filter((n) => n.selected || n.id === selectedId);
+    if (selectedNodesList.length > 0) {
+      saveToHistory();
+      const nodeIds = new Set(selectedNodesList.map((n) => n.id));
+      setNodes((nds) => nds.filter((n) => !nodeIds.has(n.id)));
+      setEdges((eds) => eds.filter((e) => !nodeIds.has(e.source) && !nodeIds.has(e.target)));
+      setSelectedId(null);
+    }
+  }, [nodes, edges, selectedId, saveToHistory, setNodes, setEdges, setSelectedId]);
 
   const nodesWithHandlers = useMemo(
     () =>
@@ -184,6 +371,65 @@ export default function App() {
   };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // İlk yüklemede history snapshot'ı al
+  useEffect(() => {
+    if (!initializedRef.current && nodes.length > 0) {
+      initializedRef.current = true;
+      saveToHistory();
+    }
+  }, [nodes.length, saveToHistory]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Input/textarea içindeyse shortcut'ları devre dışı bırak
+      const target = e.target;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const ctrlKey = isMac ? e.metaKey : e.ctrlKey;
+
+      // Ctrl+Z (Undo)
+      if (ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl+Shift+Z veya Ctrl+Y (Redo)
+      else if ((ctrlKey && e.shiftKey && e.key === 'z') || (ctrlKey && e.key === 'y')) {
+        e.preventDefault();
+        redo();
+      }
+      // Ctrl+C (Copy)
+      else if (ctrlKey && e.key === 'c') {
+        e.preventDefault();
+        copySelected();
+      }
+      // Ctrl+V (Paste)
+      else if (ctrlKey && e.key === 'v') {
+        e.preventDefault();
+        pasteFromClipboard();
+      }
+      // Ctrl+A (Select All)
+      else if (ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        selectAll();
+      }
+      // Delete (Seçili node'u sil)
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        const hasSelected = selectedId || selectedEdges?.length || nodes.some(n => n.selected) || edges.some(ed => ed.selected);
+        if (hasSelected) {
+          e.preventDefault();
+          deleteSelected();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo, copySelected, pasteFromClipboard, selectAll, selectedId, selectedEdges, deleteSelected, nodes, edges]);
 
   const runAll = async () => {
     if (running) return;
@@ -345,15 +591,25 @@ export default function App() {
           >
             🗑 Delete Selected
           </button>
+
           <button
-  className={`btn ${running ? "loading" : ""}`}
-  onClick={runAll}
-  disabled={running}
-  title="Run scenario"
-  style={{ marginLeft: 8 }}
->
-  {running ? (<><span className="spinner" /> Running...</>) : "🚀 Run"}
-</button>
+            className="btn"
+            onClick={() => setShowHarModal(true)}
+            title="Import HAR file"
+            style={{ marginLeft: 8 }}
+          >
+            📁 Import HAR
+          </button>
+
+          <button
+            className={`btn ${running ? "loading" : ""}`}
+            onClick={runAll}
+            disabled={running}
+            title="Run scenario"
+            style={{ marginLeft: 8 }}
+          >
+            {running ? (<><span className="spinner" /> Running...</>) : "🚀 Run"}
+          </button>
 
           {/* sağa yasla + theme switch */}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
@@ -393,6 +649,14 @@ export default function App() {
           </ReactFlow>
         </div>
       </div>
+
+      {/* HAR Import Modal */}
+      {showHarModal && (
+        <HarImportModal
+          onClose={() => setShowHarModal(false)}
+          onImport={importHarEntries}
+        />
+      )}
     </div>
   );
 }

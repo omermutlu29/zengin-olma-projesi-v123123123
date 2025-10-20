@@ -155,7 +155,7 @@ textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Me
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* === Node (canvas’taki mini görünüm) — TAM ARKA PLAN RENK === */
+/* === Node (canvas'taki mini görünüm) — TAM ARKA PLAN RENK === */
 .node-mini {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -163,10 +163,39 @@ textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Me
   min-width: 220px;
   box-shadow: var(--shadow-lg);
   position: relative;
+  transition: all 0.2s ease;
 }
 
 /* ŞERİTİ KALDIR */
 .node-mini::before { display: none !important; }
+
+/* HOVER EFFECT - Node üzerine gelince */
+.react-flow__node:hover .node-mini {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15), var(--shadow-lg);
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] .react-flow__node:hover .node-mini {
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2), var(--shadow-lg);
+}
+
+/* SEÇİLİ NODE STILI - SÜPER BELİRGİN */
+.react-flow__node.selected .node-mini,
+.react-flow__node-custom.selected .node-mini {
+  border: 3px solid var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2), 
+              0 20px 40px rgba(37, 99, 235, 0.15) !important;
+  transform: scale(1.02);
+  z-index: 1000;
+}
+
+:root[data-theme="dark"] .react-flow__node.selected .node-mini,
+:root[data-theme="dark"] .react-flow__node-custom.selected .node-mini {
+  border: 3px solid var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25), 
+              0 20px 40px rgba(34, 211, 238, 0.2) !important;
+}
 
 /* Tam arka plan renkleri (duruma göre) */
 .node-mini.status-idle {
@@ -243,4 +272,207 @@ textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Me
 @keyframes nodePulse {
   0%, 100% { transform: translateZ(0) scale(1); box-shadow: 0 0 0 0 rgba(0,0,0,0.12); }
   50% { transform: translateZ(0) scale(1.01); box-shadow: 0 10px 24px rgba(0,0,0,0.14); }
+}
+
+/* === Modal Styles === */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 700px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 60px 20px;
+  text-align: center;
+  background: var(--surface-2);
+  transition: all 0.2s;
+}
+
+.upload-label {
+  cursor: pointer;
+  display: block;
+}
+
+.upload-area:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--surface-2) 90%, var(--accent) 10%);
+}
+
+.filter-section {
+  margin-bottom: 16px;
+}
+
+.entries-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.entry-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.2s;
+  align-items: flex-start;
+}
+
+.entry-item:last-child {
+  border-bottom: none;
+}
+
+.entry-item:hover {
+  background: color-mix(in oklab, var(--surface-2) 95%, var(--accent) 5%);
+}
+
+.entry-item.selected {
+  background: color-mix(in oklab, var(--surface-2) 90%, var(--accent) 10%);
+}
+
+.entry-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.entry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.entry-url {
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.filter-tag {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.like-tag {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+:root[data-theme="dark"] .like-tag {
+  background: #14532d;
+  color: #86efac;
+  border: 1px solid #166534;
+}
+
+.unlike-tag {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+:root[data-theme="dark"] .unlike-tag {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border: 1px solid #991b1b;
+}
+
+/* === ReactFlow Seçili Edge Stili === */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent) !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 8px var(--accent));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  animation: edgePulse 2s ease-in-out infinite;
+}
+
+@keyframes edgePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ReactFlow selection box */
+.react-flow__nodesselection-rect,
+.react-flow__selection {
+  background: rgba(37, 99, 235, 0.08);
+  border: 2px solid var(--accent);
+}
+
+:root[data-theme="dark"] .react-flow__nodesselection-rect,
+:root[data-theme="dark"] .react-flow__selection {
+  background: rgba(34, 211, 238, 0.1);
+  border: 2px solid var(--accent);
 }

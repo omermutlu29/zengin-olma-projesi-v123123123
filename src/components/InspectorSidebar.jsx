@@ -28,6 +28,10 @@ export default function InspectorSidebar({
   // Textarea değerleri için local state
   const [bodyText, setBodyText] = useState("");
   const [responseText, setResponseText] = useState("");
+  
+  // Parse edilmiş versiyonlar (JsonLinkTree için)
+  const [parsedBody, setParsedBody] = useState({});
+  const [parsedResponse, setParsedResponse] = useState({});
 
   useEffect(() => {
     localStorage.setItem("sidebarExpandedSections", JSON.stringify(expandedSections));
@@ -43,14 +47,26 @@ export default function InspectorSidebar({
   // Node değiştiğinde textarea değerlerini node'dan yükle
   useEffect(() => {
     if (selectedNode) {
-      setBodyText(JSON.stringify(selectedNode.data?.body || {}, null, 2));
-      setResponseText(JSON.stringify(selectedNode.data?.expected || {}, null, 2));
+      const bodyData = selectedNode.data?.body || {};
+      const responseData = selectedNode.data?.expected || {};
+      
+      setBodyText(JSON.stringify(bodyData, null, 2));
+      setResponseText(JSON.stringify(responseData, null, 2));
+      setParsedBody(bodyData);
+      setParsedResponse(responseData);
     }
   }, [selectedNode?.id]); // Sadece ID değiştiğinde yükle
 
   // Body değişikliklerini kaydet
   const handleBodyChange = (value) => {
     setBodyText(value);
+    // Real-time parsing (hata olsa bile göster)
+    try {
+      const parsed = JSON.parse(value);
+      setParsedBody(parsed);
+    } catch (e) {
+      // JSON geçersiz, eski değeri tut
+    }
   };
 
   const handleBodyBlur = () => {
@@ -58,6 +74,7 @@ export default function InspectorSidebar({
     try {
       const parsed = JSON.parse(bodyText);
       onChangeField(selectedNode.id, "body", parsed);
+      setParsedBody(parsed);
     } catch (e) {
       // JSON parse hatası, kaydetme
     }
@@ -66,6 +83,13 @@ export default function InspectorSidebar({
   // Response değişikliklerini kaydet
   const handleResponseChange = (value) => {
     setResponseText(value);
+    // Real-time parsing (hata olsa bile göster)
+    try {
+      const parsed = JSON.parse(value);
+      setParsedResponse(parsed);
+    } catch (e) {
+      // JSON geçersiz, eski değeri tut
+    }
   };
 
   const handleResponseBlur = () => {
@@ -73,6 +97,7 @@ export default function InspectorSidebar({
     try {
       const parsed = JSON.parse(responseText);
       onChangeField(selectedNode.id, "expected", parsed);
+      setParsedResponse(parsed);
     } catch (e) {
       // JSON parse hatası, kaydetme
     }
@@ -281,7 +306,7 @@ export default function InspectorSidebar({
                 <div className="small" style={{ margin: "8px 0" }}>Body Fields (🔗 ile linkle, 📋 ile kopyala)</div>
                 <JsonLinkTree
                   basePath="body"
-                  value={body || {}}
+                  value={parsedBody}
                   onPick={(p)=>onPickPath(id,p)}
                   maxDepth={3}
                   nodeId={id}
@@ -308,7 +333,7 @@ export default function InspectorSidebar({
                 <div className="small" style={{ margin: "8px 0" }}>Response Fields</div>
                 <JsonLinkTree
                   basePath="response"
-                  value={expected || {}}
+                  value={parsedResponse}
                   onPick={(p)=>onPickPath(id,p)}
                   maxDepth={3}
                   nodeId={id}

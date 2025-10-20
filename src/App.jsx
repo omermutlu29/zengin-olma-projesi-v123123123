@@ -43,9 +43,15 @@ export default function App() {
     localStorage.setItem("sidebarWidth", sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  // State'ler
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  // State'ler - localStorage'dan yükle
+  const [nodes, setNodes, onNodesChange] = useNodesState(() => {
+    const saved = localStorage.getItem("flow-nodes");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [edges, setEdges, onEdgesChange] = useEdgesState(() => {
+    const saved = localStorage.getItem("flow-edges");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [selectedId, setSelectedId] = useState(null);
   const [selectedEdges, setSelectedEdges] = useState([]);
   const [linking, setLinking] = useState(null); // { nodeId, fieldPath }
@@ -407,6 +413,71 @@ export default function App() {
     }
   }, [nodes.length, saveToHistory]);
 
+  // Otomatik kaydetme - nodes ve edges değiştiğinde
+  useEffect(() => {
+    if (nodes.length > 0 || edges.length > 0) {
+      localStorage.setItem("flow-nodes", JSON.stringify(nodes));
+      localStorage.setItem("flow-edges", JSON.stringify(edges));
+    }
+  }, [nodes, edges]);
+
+  // Export JSON
+  const exportToJSON = () => {
+    const data = {
+      nodes,
+      edges,
+      version: "1.0.0",
+      exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `flow-export-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import JSON
+  const importFromJSON = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.nodes && data.edges) {
+          saveToHistory();
+          setNodes(data.nodes);
+          setEdges(data.edges);
+          setSelectedId(null);
+        } else {
+          alert("Invalid JSON format");
+        }
+      } catch (error) {
+        alert("Error reading file: " + error.message);
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    event.target.value = "";
+  };
+
+  // Clear all
+  const clearAll = () => {
+    if (confirm("Are you sure you want to clear all nodes and edges? This cannot be undone.")) {
+      saveToHistory();
+      setNodes([]);
+      setEdges([]);
+      setSelectedId(null);
+      localStorage.removeItem("flow-nodes");
+      localStorage.removeItem("flow-edges");
+    }
+  };
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -611,8 +682,6 @@ export default function App() {
           
           <button className="btn primary" onClick={addNode}>+ Add Request</button>
 
-       
-
           <button
             className="btn danger"
             onClick={deleteSelected}
@@ -641,6 +710,35 @@ export default function App() {
           >
             {running ? (<><span className="spinner" /> Running...</>) : "🚀 Run"}
           </button>
+
+          {/* Save/Load buttons */}
+          <div style={{ marginLeft: 8, display: "flex", gap: 8 }}>
+            <button
+              className="btn"
+              onClick={exportToJSON}
+              title="Export to JSON file"
+            >
+              💾 Export
+            </button>
+            
+            <label className="btn" style={{ cursor: "pointer", margin: 0 }} title="Import from JSON file">
+              📂 Import
+              <input
+                type="file"
+                accept="application/json"
+                onChange={importFromJSON}
+                style={{ display: "none" }}
+              />
+            </label>
+
+            <button
+              className="btn danger"
+              onClick={clearAll}
+              title="Clear all nodes and edges"
+            >
+              🗑 Clear All
+            </button>
+          </div>
 
           {/* sağa yasla + theme switch */}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>

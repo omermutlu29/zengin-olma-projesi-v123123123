@@ -10,11 +10,6 @@ export default function InspectorSidebar({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef(null);
   
-  // Textarea referansları
-  const bodyTextareaRef = useRef(null);
-  const responseTextareaRef = useRef(null);
-  const prevNodeIdRef = useRef(null);
-  
   // Accordion state - varsayılan olarak Request ve Last Run açık
   const [expandedSections, setExpandedSections] = useState(() => {
     const saved = localStorage.getItem("sidebarExpandedSections");
@@ -30,6 +25,10 @@ export default function InspectorSidebar({
     };
   });
 
+  // Textarea değerleri için local state
+  const [bodyText, setBodyText] = useState("");
+  const [responseText, setResponseText] = useState("");
+
   useEffect(() => {
     localStorage.setItem("sidebarExpandedSections", JSON.stringify(expandedSections));
   }, [expandedSections]);
@@ -41,40 +40,43 @@ export default function InspectorSidebar({
     }));
   };
 
-  // Node değiştiğinde textarea değerlerini kaydet
+  // Node değiştiğinde textarea değerlerini node'dan yükle
   useEffect(() => {
-    const currentNodeId = selectedNode?.id;
-    
-    // Önceki node varsa ve yeni node farklıysa, önceki node'un değerlerini kaydet
-    if (prevNodeIdRef.current && prevNodeIdRef.current !== currentNodeId) {
-      // Body textarea'sını kaydet
-      if (bodyTextareaRef.current) {
-        try {
-          const bodyValue = bodyTextareaRef.current.value;
-          if (bodyValue) {
-            onChangeField(prevNodeIdRef.current, "body", JSON.parse(bodyValue));
-          }
-        } catch (e) {
-          // JSON parse hatası, kaydetme
-        }
-      }
-      
-      // Response textarea'sını kaydet
-      if (responseTextareaRef.current) {
-        try {
-          const responseValue = responseTextareaRef.current.value;
-          if (responseValue) {
-            onChangeField(prevNodeIdRef.current, "expected", JSON.parse(responseValue));
-          }
-        } catch (e) {
-          // JSON parse hatası, kaydetme
-        }
-      }
+    if (selectedNode) {
+      setBodyText(JSON.stringify(selectedNode.data?.body || {}, null, 2));
+      setResponseText(JSON.stringify(selectedNode.data?.expected || {}, null, 2));
     }
-    
-    // Şu anki node ID'sini kaydet
-    prevNodeIdRef.current = currentNodeId;
-  }, [selectedNode?.id, onChangeField]);
+  }, [selectedNode?.id]); // Sadece ID değiştiğinde yükle
+
+  // Body değişikliklerini kaydet
+  const handleBodyChange = (value) => {
+    setBodyText(value);
+  };
+
+  const handleBodyBlur = () => {
+    if (!selectedNode) return;
+    try {
+      const parsed = JSON.parse(bodyText);
+      onChangeField(selectedNode.id, "body", parsed);
+    } catch (e) {
+      // JSON parse hatası, kaydetme
+    }
+  };
+
+  // Response değişikliklerini kaydet
+  const handleResponseChange = (value) => {
+    setResponseText(value);
+  };
+
+  const handleResponseBlur = () => {
+    if (!selectedNode) return;
+    try {
+      const parsed = JSON.parse(responseText);
+      onChangeField(selectedNode.id, "expected", parsed);
+    } catch (e) {
+      // JSON parse hatası, kaydetme
+    }
+  };
 
   // Resize handler
   const handleMouseDown = (e) => {
@@ -271,11 +273,10 @@ export default function InspectorSidebar({
             {expandedSections.body && (
               <div className="section-content">
                 <textarea
-                  ref={bodyTextareaRef}
-                  key={`body-${id}`}
                   className="code"
-                  defaultValue={JSON.stringify(body || {}, null, 2)}
-                  onBlur={(e)=>{ try{ setField("body", JSON.parse(e.target.value||"{}")); } catch{} }}
+                  value={bodyText}
+                  onChange={(e) => handleBodyChange(e.target.value)}
+                  onBlur={handleBodyBlur}
                 />
                 <div className="small" style={{ margin: "8px 0" }}>Body Fields (🔗 ile linkle, 📋 ile kopyala)</div>
                 <JsonLinkTree
@@ -299,11 +300,10 @@ export default function InspectorSidebar({
             {expandedSections.response && (
               <div className="section-content">
                 <textarea
-                  ref={responseTextareaRef}
-                  key={`response-${id}`}
                   className="code"
-                  defaultValue={JSON.stringify(expected || {}, null, 2)}
-                  onBlur={(e)=>{ try{ setField("expected", JSON.parse(e.target.value||"{}")); } catch{} }}
+                  value={responseText}
+                  onChange={(e) => handleResponseChange(e.target.value)}
+                  onBlur={handleResponseBlur}
                 />
                 <div className="small" style={{ margin: "8px 0" }}>Response Fields</div>
                 <JsonLinkTree

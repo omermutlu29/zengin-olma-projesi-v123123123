@@ -101,15 +101,13 @@ export default function App() {
     }
   }, [history, historyIndex, setNodes, setEdges]);
 
-  // Copy - sadece seçili olan tek node'u kopyala
+  // Copy - seçili tüm node'ları kopyala
   const copySelected = useCallback(() => {
-    if (selectedId) {
-      const node = nodes.find((n) => n.id === selectedId);
-      if (node) {
-        setClipboard({ nodes: [node] });
-      }
+    const selectedNodes = nodes.filter((n) => n.selected);
+    if (selectedNodes.length > 0) {
+      setClipboard({ nodes: selectedNodes });
     }
-  }, [nodes, selectedId]);
+  }, [nodes]);
 
   // Paste
   const pasteFromClipboard = useCallback(() => {
@@ -133,11 +131,15 @@ export default function App() {
     setNodes((nds) => [...nds, ...newNodes]);
   }, [clipboard, nodes, setNodes, saveToHistory]);
 
-  // Select All - devre dışı (multi-selection yok)
+  // Select All - tüm node'ları seç
   const selectAll = useCallback(() => {
-    // Multi-selection desteklemiyoruz, bu fonksiyonu devre dışı bırak
-    return;
-  }, []);
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: true,
+      }))
+    );
+  }, [setNodes]);
 
   const addNode = () => {
     saveToHistory();
@@ -316,30 +318,38 @@ export default function App() {
       return;
     }
 
-    // Sadece selectedId olan node'u sil (multi-selection desteklemiyoruz)
-    if (selectedId) {
+    // Seçili node'ları bul (selected: true olanlar)
+    const selectedNodesList = nodes.filter((n) => n.selected);
+    if (selectedNodesList.length > 0) {
       saveToHistory();
-      setNodes((nds) => nds.filter((n) => n.id !== selectedId));
-      setEdges((eds) => eds.filter((e) => e.source !== selectedId && e.target !== selectedId));
+      const nodeIds = new Set(selectedNodesList.map((n) => n.id));
+      setNodes((nds) => nds.filter((n) => !nodeIds.has(n.id)));
+      setEdges((eds) => eds.filter((e) => !nodeIds.has(e.source) && !nodeIds.has(e.target)));
       setSelectedId(null);
     }
-  }, [edges, selectedId, saveToHistory, setNodes, setEdges, setSelectedId]);
+  }, [nodes, edges, saveToHistory, setNodes, setEdges, setSelectedId]);
 
   const nodesWithHandlers = useMemo(
     () =>
       nodes.map((n) => ({
         ...n,
-        selected: n.id === selectedId, // Sadece selectedId olan seçili
+        // Node'un kendi selected değerini kullan (multi-selection için)
+        selected: n.selected || n.id === selectedId,
         data: { ...n.data },
       })),
     [nodes, selectedId]
   );
 
-  // Node click - diğer node'ların selection'ını temizle
+  // Node click - tek tıklamada diğer seçimleri temizle
   const handleNodeClick = useCallback((event, node) => {
+    // Shift/Ctrl basılı değilse, diğer seçimleri temizle
+    if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      setNodes((nds) => nds.map((n) => ({ 
+        ...n, 
+        selected: n.id === node.id 
+      })));
+    }
     setSelectedId(node?.id ?? null);
-    // Tüm node'ların selected özelliğini kaldır
-    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
   }, [setNodes]);
 
   const onConnect = useCallback(
@@ -509,9 +519,10 @@ export default function App() {
         e.preventDefault();
         selectAll();
       }
-      // Delete (Seçili node'u sil)
+      // Delete (Seçili node'ları sil)
       else if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedId || selectedEdges?.length) {
+        const hasSelection = nodes.some(n => n.selected) || edges.some(e => e.selected);
+        if (hasSelection) {
           e.preventDefault();
           deleteSelected();
         }
@@ -764,7 +775,6 @@ export default function App() {
               setSelectedId(first?.id ?? null);
               setSelectedEdges(sel?.edges ?? []);
             }}
-            multiSelectionKeyCode={null}
           >
             <MiniMap pannable zoomable />
             <Controls />

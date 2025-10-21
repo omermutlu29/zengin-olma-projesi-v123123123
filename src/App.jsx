@@ -101,12 +101,13 @@ export default function App() {
     }
   }, [history, historyIndex, setNodes, setEdges]);
 
-  // Copy
+  // Copy - sadece seçili olan tek node'u kopyala
   const copySelected = useCallback(() => {
-    // Tüm seçili node'ları kopyala (hem tek seçim hem çoklu seçim)
-    const selectedNodes = nodes.filter((n) => n.selected || n.id === selectedId);
-    if (selectedNodes.length > 0) {
-      setClipboard({ nodes: selectedNodes });
+    if (selectedId) {
+      const node = nodes.find((n) => n.id === selectedId);
+      if (node) {
+        setClipboard({ nodes: [node] });
+      }
     }
   }, [nodes, selectedId]);
 
@@ -132,23 +133,11 @@ export default function App() {
     setNodes((nds) => [...nds, ...newNodes]);
   }, [clipboard, nodes, setNodes, saveToHistory]);
 
-  // Select All
+  // Select All - devre dışı (multi-selection yok)
   const selectAll = useCallback(() => {
-    // Tüm node'ları seçili hale getir
-    setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        selected: true,
-      }))
-    );
-    // Tüm edge'leri de seçili hale getir
-    setEdges((eds) =>
-      eds.map((e) => ({
-        ...e,
-        selected: true,
-      }))
-    );
-  }, [setNodes, setEdges]);
+    // Multi-selection desteklemiyoruz, bu fonksiyonu devre dışı bırak
+    return;
+  }, []);
 
   const addNode = () => {
     saveToHistory();
@@ -327,26 +316,31 @@ export default function App() {
       return;
     }
 
-    // Sonra node'ları kontrol et (hem selected=true hem selectedId)
-    const selectedNodesList = nodes.filter((n) => n.selected || n.id === selectedId);
-    if (selectedNodesList.length > 0) {
+    // Sadece selectedId olan node'u sil (multi-selection desteklemiyoruz)
+    if (selectedId) {
       saveToHistory();
-      const nodeIds = new Set(selectedNodesList.map((n) => n.id));
-      setNodes((nds) => nds.filter((n) => !nodeIds.has(n.id)));
-      setEdges((eds) => eds.filter((e) => !nodeIds.has(e.source) && !nodeIds.has(e.target)));
+      setNodes((nds) => nds.filter((n) => n.id !== selectedId));
+      setEdges((eds) => eds.filter((e) => e.source !== selectedId && e.target !== selectedId));
       setSelectedId(null);
     }
-  }, [nodes, edges, selectedId, saveToHistory, setNodes, setEdges, setSelectedId]);
+  }, [edges, selectedId, saveToHistory, setNodes, setEdges, setSelectedId]);
 
   const nodesWithHandlers = useMemo(
     () =>
       nodes.map((n) => ({
         ...n,
-        selected: n.id === selectedId,
+        selected: n.id === selectedId, // Sadece selectedId olan seçili
         data: { ...n.data },
       })),
     [nodes, selectedId]
   );
+
+  // Node click - diğer node'ların selection'ını temizle
+  const handleNodeClick = useCallback((event, node) => {
+    setSelectedId(node?.id ?? null);
+    // Tüm node'ların selected özelliğini kaldır
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+  }, [setNodes]);
 
   const onConnect = useCallback(
     (p) => setEdges((eds) => addEdge({ ...p, markerEnd: { type: MarkerType.ArrowClosed } }, eds)),
@@ -517,8 +511,7 @@ export default function App() {
       }
       // Delete (Seçili node'u sil)
       else if (e.key === 'Delete' || e.key === 'Backspace') {
-        const hasSelected = selectedId || selectedEdges?.length || nodes.some(n => n.selected) || edges.some(ed => ed.selected);
-        if (hasSelected) {
+        if (selectedId || selectedEdges?.length) {
           e.preventDefault();
           deleteSelected();
         }
@@ -765,12 +758,13 @@ export default function App() {
             nodeTypes={nodeTypes}
             fitView
             proOptions={{ hideAttribution: true }}
-            onNodeClick={(_, node) => setSelectedId(node?.id ?? null)}
+            onNodeClick={handleNodeClick}
             onSelectionChange={(sel) => {
               const first = sel?.nodes?.[0];
               setSelectedId(first?.id ?? null);
               setSelectedEdges(sel?.edges ?? []);
             }}
+            multiSelectionKeyCode={null}
           >
             <MiniMap pannable zoomable />
             <Controls />

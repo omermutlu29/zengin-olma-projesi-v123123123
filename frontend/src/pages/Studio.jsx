@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { API_BASE_URL, createWebSocket } from '../utils/api';
+import { API_BASE_URL, createWebSocket, apiRequest } from '../utils/api';
 import {
   ReactFlow, Controls, Background, MiniMap,
   useNodesState, useEdgesState, addEdge, MarkerType
@@ -615,22 +615,13 @@ export default function Studio() {
         }))
       };
 
-      const response = await fetch('API_BASE_URL/api/scenarios', {
+      const result = await apiRequest('/api/scenarios', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(scenarioData)
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        setSavedScenarioId(result._id);
-        alert('Scenario saved successfully!');
-      } else {
-        const error = await response.json();
-        alert('Error saving scenario: ' + error.error);
-      }
+      setSavedScenarioId(result._id);
+      alert('Scenario saved successfully!');
     } catch (error) {
       console.error('Error saving scenario:', error);
       alert('Error saving scenario: ' + error.message);
@@ -650,14 +641,10 @@ export default function Studio() {
       setRunning(true);
       setExecutionStatus(null);
 
-      console.log('Sending execution request to:', `API_BASE_URL/api/execution/start/${savedScenarioId}`);
+      console.log('Sending execution request to:', `/api/execution/start/${savedScenarioId}`);
       
-      const response = await fetch(`API_BASE_URL/api/execution/start/${savedScenarioId}`, {
+      const response = await apiRequest(`/api/execution/start/${savedScenarioId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           variables: {},
           settings: {}
@@ -695,10 +682,7 @@ export default function Studio() {
   const loadScenarios = async () => {
     try {
       setLoadingScenarios(true);
-      const response = await fetch('API_BASE_URL/api/scenarios');
-      if (!response.ok) throw new Error('Failed to load scenarios');
-      
-      const data = await response.json();
+      const data = await apiRequest('/api/scenarios');
       setSavedScenarios(data.scenarios || []);
     } catch (error) {
       console.error('Error loading scenarios:', error);
@@ -710,10 +694,7 @@ export default function Studio() {
 
   const loadScenario = async (scenarioId) => {
     try {
-      const response = await fetch(`API_BASE_URL/api/scenarios/${scenarioId}`);
-      if (!response.ok) throw new Error('Failed to load scenario');
-      
-      const scenario = await response.json();
+      const scenario = await apiRequest(`/api/scenarios/${scenarioId}`);
       
       // Scenario data'sını flow'a yükle
       if (scenario.nodes && scenario.edges) {
@@ -738,11 +719,9 @@ export default function Studio() {
     if (!confirm('Are you sure you want to delete this scenario?')) return;
     
     try {
-      const response = await fetch(`API_BASE_URL/api/scenarios/${scenarioId}`, {
+      await apiRequest(`/api/scenarios/${scenarioId}`, {
         method: 'DELETE'
       });
-      
-      if (!response.ok) throw new Error('Failed to delete scenario');
       
       // Listeyi yenile
       await loadScenarios();

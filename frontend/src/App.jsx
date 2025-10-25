@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { API_BASE_URL } from './utils/api';
 import {
   ReactFlow, Controls, Background, MiniMap,
   useNodesState, useEdgesState, addEdge, MarkerType
@@ -617,7 +618,7 @@ export default function App() {
         }))
       };
 
-      const response = await fetch('http://localhost:3001/api/scenarios', {
+      const response = await fetch(`${API_BASE_URL}/api/scenarios`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -650,7 +651,7 @@ export default function App() {
       setRunning(true);
       setExecutionStatus(null);
 
-      const response = await fetch(`http://localhost:3001/api/execution/start/${savedScenarioId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/execution/start/${savedScenarioId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -688,7 +689,7 @@ export default function App() {
   const loadScenarios = async () => {
     try {
       setLoadingScenarios(true);
-      const response = await fetch('http://localhost:3001/api/scenarios');
+      const response = await fetch(`${API_BASE_URL}/api/scenarios`);
       if (!response.ok) throw new Error('Failed to load scenarios');
       
       const data = await response.json();
@@ -703,7 +704,7 @@ export default function App() {
 
   const loadScenario = async (scenarioId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}`);
+      const response = await fetch(`${API_BASE_URL}/api/scenarios/${scenarioId}`);
       if (!response.ok) throw new Error('Failed to load scenario');
       
       const scenario = await response.json();
@@ -731,7 +732,7 @@ export default function App() {
     if (!confirm('Are you sure you want to delete this scenario?')) return;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/scenarios/${scenarioId}`, {
         method: 'DELETE'
       });
       

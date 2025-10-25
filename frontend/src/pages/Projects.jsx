@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { apiRequest, API_BASE_URL } from '../utils/api';
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -19,7 +20,7 @@ export default function Projects() {
       if (search) params.append('search', search);
       if (statusFilter) params.append('status', statusFilter);
 
-      const response = await fetch(`http://localhost:3001/api/admin/projects?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/projects?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -43,7 +44,7 @@ export default function Projects() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/admin/projects/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/projects/${projectId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

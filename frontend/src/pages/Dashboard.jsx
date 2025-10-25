@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { apiRequest, API_BASE_URL } from '../utils/api';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -12,21 +13,10 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/admin/dashboard', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      } else {
-        setError('Failed to load dashboard data');
-      }
+      const data = await apiRequest('/api/admin/dashboard');
+      setStats(data);
     } catch (error) {
-      setError('Network error');
+      setError(error.message || 'Network error');
     } finally {
       setLoading(false);
     }

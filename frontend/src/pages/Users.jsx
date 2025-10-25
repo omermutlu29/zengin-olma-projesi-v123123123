@@ -11,11 +11,11 @@ const Users = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
-
+API_BASE_URL/api/admin/users
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('API_BASE_URL/api/admin/users', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

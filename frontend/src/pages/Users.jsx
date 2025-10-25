@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthWrapper';
+import { API_BASE_URL } from '../utils/api';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -14,7 +15,7 @@ const Users = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/admin/users', {
+      const response = await fetch('API_BASE_URL/api/admin/users', {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

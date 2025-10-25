@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { apiRequest, API_BASE_URL } from '../utils/api';
 
 export default function Scenarios() {
   const [scenarios, setScenarios] = useState([]);
@@ -35,18 +36,13 @@ export default function Scenarios() {
       params.append('sortBy', sortBy);
       params.append('sortOrder', sortOrder);
 
-      const response = await fetch(`http://localhost:3001/api/scenarios?${params}`, {
+      const data = await apiRequest(`/api/scenarios?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setScenarios(data.scenarios || []);
-      } else {
-        setError('Failed to load scenarios');
-      }
+      setScenarios(data.scenarios || []);
     } catch (error) {
       setError('Network error');
     } finally {
@@ -57,7 +53,7 @@ export default function Scenarios() {
   const fetchLockedScenarios = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/scenarios/locks', {
+      const response = await fetch('API_BASE_URL/api/scenarios/locks', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -77,7 +73,7 @@ export default function Scenarios() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}`, {
+      const response = await fetch(`API_BASE_URL/api/scenarios/${scenarioId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -97,7 +93,7 @@ export default function Scenarios() {
   const handleExecute = async (scenarioId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/execution/start/${scenarioId}`, {
+      const response = await fetch(`API_BASE_URL/api/execution/start/${scenarioId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -129,7 +125,7 @@ export default function Scenarios() {
   const handleLockScenario = async (scenarioId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}/lock`, {
+      const response = await fetch(`API_BASE_URL/api/scenarios/${scenarioId}/lock`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -152,7 +148,7 @@ export default function Scenarios() {
   const handleUnlockScenario = async (scenarioId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}/unlock`, {
+      const response = await fetch(`API_BASE_URL/api/scenarios/${scenarioId}/unlock`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

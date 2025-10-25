@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../utils/api';
 
 // Axios interceptor for CORS
 axios.defaults.withCredentials = true;
@@ -30,7 +31,7 @@ const AuthWrapper = ({ children }) => {
       }
 
       try {
-        const response = await axios.get('http://localhost:3001/api/auth/profile', {
+        const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -51,7 +52,7 @@ const AuthWrapper = ({ children }) => {
 
   const handleLogin = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
         password
       });

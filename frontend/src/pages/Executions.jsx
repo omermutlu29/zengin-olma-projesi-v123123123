@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../utils/api';
 import { useAuth } from '../components/AuthWrapper';
 
 const Executions = () => {
@@ -25,7 +26,7 @@ const Executions = () => {
         sortOrder
       });
 
-      const response = await fetch(`http://localhost:3001/api/execution?${params}`, {
+      const response = await fetch(`API_BASE_URL/api/execution?${params}`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -52,7 +53,7 @@ const Executions = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/execution/${executionId}`, {
+      const response = await fetch(`API_BASE_URL/api/execution/${executionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

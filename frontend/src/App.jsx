@@ -57,6 +57,17 @@ export default function App() {
   const [linking, setLinking] = useState(null); // { nodeId, fieldPath }
   const [running, setRunning] = useState(false);
   const [showHarModal, setShowHarModal] = useState(false);
+  const [scenarioName, setScenarioName] = useState("");
+  const [scenarioDescription, setScenarioDescription] = useState("");
+  const [savedScenarioId, setSavedScenarioId] = useState(null);
+  const [executionId, setExecutionId] = useState(null);
+  const [wsConnection, setWsConnection] = useState(null);
+  const [executionStatus, setExecutionStatus] = useState(null);
+  
+  // Senaryo yükleme state'leri
+  const [savedScenarios, setSavedScenarios] = useState([]);
+  const [showScenarioList, setShowScenarioList] = useState(false);
+  const [loadingScenarios, setLoadingScenarios] = useState(false);
   const rf = useRef(null);
 
   // Undo/Redo & Clipboard
@@ -425,6 +436,87 @@ export default function App() {
     }
   }, [nodes, edges]);
 
+  // WebSocket bağlantısı
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:3001/ws');
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setWsConnection(ws);
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('WebSocket message:', data);
+      
+      switch(data.type) {
+        case 'execution_update':
+          setExecutionStatus(data);
+          if (data.event === 'execution_completed' || data.event === 'execution_failed') {
+            setRunning(false);
+          }
+          break;
+        case 'node_update':
+          console.log('Node update:', data);
+          
+          // Node'un görsel durumunu güncelle
+          if (data.nodeId && data.event) {
+            setNodes((nds) =>
+              nds.map((node) => {
+                if (node.id === data.nodeId) {
+                  let nodeStatus = 'pending';
+                  let nodeColor = '#e1e5e9'; // default color
+                  
+                  switch (data.event) {
+                    case 'node_started':
+                      nodeStatus = 'running';
+                      break;
+                    case 'node_completed':
+                      nodeStatus = 'completed';
+                      break;
+                    case 'node_failed':
+                      nodeStatus = 'failed';
+                      break;
+                    case 'node_skipped':
+                      nodeStatus = 'skipped';
+                      break;
+                  }
+                  
+                  return {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      runtime: {
+                        ...node.data.runtime,
+                        status: nodeStatus,
+                        running: data.event === 'node_started'
+                      }
+                    }
+                    // Style'ları kaldırdık - CSS class'ları kullanacağız
+                  };
+                }
+                return node;
+              })
+            );
+          }
+          break;
+      }
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setWsConnection(null);
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    return () => {
+      ws.close();
+    };
+  }, []);
+
   // Export JSON
   const exportToJSON = () => {
     const data = {
@@ -479,6 +571,169 @@ export default function App() {
       setSelectedId(null);
       localStorage.removeItem("flow-nodes");
       localStorage.removeItem("flow-edges");
+    }
+  };
+
+  // Senaryo kaydetme
+  const saveScenario = async () => {
+    if (!scenarioName.trim()) {
+      alert('Please enter a scenario name');
+      return;
+    }
+
+    try {
+      const scenarioData = {
+        name: scenarioName,
+        description: scenarioDescription,
+        nodes: nodes.map(node => ({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: {
+            label: node.data.name,
+            method: node.data.method,
+            url: node.data.url,
+            headers: node.data.headers,
+            body: node.data.body,
+            assertions: node.data.assertions?.http || []
+          }
+        })),
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: edge.sourceHandle,
+          targetHandle: edge.targetHandle,
+          type: edge.type
+        }))
+      };
+
+      const response = await fetch('http://localhost:3001/api/scenarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scenarioData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setSavedScenarioId(result._id);
+        alert('Scenario saved successfully!');
+      } else {
+        const error = await response.json();
+        alert('Error saving scenario: ' + error.error);
+      }
+    } catch (error) {
+      console.error('Error saving scenario:', error);
+      alert('Error saving scenario: ' + error.message);
+    }
+  };
+
+  // Senaryo çalıştırma
+  const executeScenario = async () => {
+    if (!savedScenarioId) {
+      alert('Please save the scenario first');
+      return;
+    }
+
+    try {
+      setRunning(true);
+      setExecutionStatus(null);
+
+      const response = await fetch(`http://localhost:3001/api/execution/start/${savedScenarioId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          variables: {},
+          settings: {}
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setExecutionId(result.executionId);
+        
+        // WebSocket'e execution'a subscribe ol
+        if (wsConnection) {
+          wsConnection.send(JSON.stringify({
+            type: 'subscribe_execution',
+            payload: { executionId: result.executionId }
+          }));
+        }
+      } else {
+        const error = await response.json();
+        alert('Error starting execution: ' + error.error);
+        setRunning(false);
+      }
+    } catch (error) {
+      console.error('Error starting execution:', error);
+      alert('Error starting execution: ' + error.message);
+      setRunning(false);
+    }
+  };
+
+  // Senaryo yükleme fonksiyonları
+  const loadScenarios = async () => {
+    try {
+      setLoadingScenarios(true);
+      const response = await fetch('http://localhost:3001/api/scenarios');
+      if (!response.ok) throw new Error('Failed to load scenarios');
+      
+      const data = await response.json();
+      setSavedScenarios(data.scenarios || []);
+    } catch (error) {
+      console.error('Error loading scenarios:', error);
+      alert('Failed to load scenarios: ' + error.message);
+    } finally {
+      setLoadingScenarios(false);
+    }
+  };
+
+  const loadScenario = async (scenarioId) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}`);
+      if (!response.ok) throw new Error('Failed to load scenario');
+      
+      const scenario = await response.json();
+      
+      // Scenario data'sını flow'a yükle
+      if (scenario.nodes && scenario.edges) {
+        setNodes(scenario.nodes);
+        setEdges(scenario.edges);
+        setScenarioName(scenario.name);
+        setScenarioDescription(scenario.description);
+        setSavedScenarioId(scenarioId);
+        
+        // UI'yi güncelle
+        setShowScenarioList(false);
+        
+        console.log('Scenario loaded:', scenario.name);
+      }
+    } catch (error) {
+      console.error('Error loading scenario:', error);
+      alert('Failed to load scenario: ' + error.message);
+    }
+  };
+
+  const deleteScenario = async (scenarioId) => {
+    if (!confirm('Are you sure you want to delete this scenario?')) return;
+    
+    try {
+      const response = await fetch(`http://localhost:3001/api/scenarios/${scenarioId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete scenario');
+      
+      // Listeyi yenile
+      await loadScenarios();
+      console.log('Scenario deleted');
+    } catch (error) {
+      console.error('Error deleting scenario:', error);
+      alert('Failed to delete scenario: ' + error.message);
     }
   };
 
@@ -705,14 +960,57 @@ export default function App() {
             📁 Import HAR
           </button>
 
+          {/* Senaryo kaydetme */}
+          <div style={{ marginLeft: 8, display: "flex", gap: 4, alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Scenario name"
+              value={scenarioName}
+              onChange={(e) => setScenarioName(e.target.value)}
+              style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "12px" }}
+            />
+            <button
+              className="btn"
+              onClick={saveScenario}
+              disabled={!scenarioName.trim()}
+              title="Save scenario to backend"
+            >
+              💾 Save Scenario
+            </button>
+          </div>
+
+          {/* Senaryo yükleme */}
+          <button
+            className="btn"
+            onClick={() => {
+              setShowScenarioList(true);
+              loadScenarios();
+            }}
+            style={{ marginLeft: 8 }}
+          >
+            📂 Load Scenario
+          </button>
+
+          {/* Senaryo çalıştırma */}
+          <button
+            className={`btn ${running ? "loading" : ""}`}
+            onClick={executeScenario}
+            disabled={running || !savedScenarioId}
+            title="Execute scenario via backend"
+            style={{ marginLeft: 8 }}
+          >
+            {running ? (<><span className="spinner" /> Executing...</>) : "🚀 Execute Scenario"}
+          </button>
+
+          {/* Local run (eski) */}
           <button
             className={`btn ${running ? "loading" : ""}`}
             onClick={runAll}
             disabled={running}
-            title="Run scenario"
+            title="Run scenario locally"
             style={{ marginLeft: 8 }}
           >
-            {running ? (<><span className="spinner" /> Running...</>) : "🚀 Run"}
+            {running ? (<><span className="spinner" /> Running...</>) : "🏃 Run Local"}
           </button>
 
           {/* Save/Load buttons */}
@@ -742,6 +1040,23 @@ export default function App() {
             >
               🗑 Clear All
             </button>
+          </div>
+
+          {/* Execution Status */}
+          {executionStatus && (
+            <div style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#f0f0f0", borderRadius: "4px", fontSize: "12px" }}>
+              <strong>Execution:</strong> {executionStatus.event} 
+              {executionStatus.data?.summary && (
+                <span style={{ marginLeft: 8 }}>
+                  ({executionStatus.data.summary.completedNodes}/{executionStatus.data.summary.totalNodes} nodes)
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* WebSocket Status */}
+          <div style={{ marginLeft: 8, fontSize: "12px", color: wsConnection ? "#4CAF50" : "#f44336" }}>
+            {wsConnection ? "🟢 Connected" : "🔴 Disconnected"}
           </div>
 
           {/* sağa yasla + theme switch */}
@@ -789,6 +1104,66 @@ export default function App() {
           onClose={() => setShowHarModal(false)}
           onImport={importHarEntries}
         />
+      )}
+
+      {/* Senaryo Listesi Modal */}
+      {showScenarioList && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>📂 Load Scenario</h3>
+              <button 
+                className="btn-close" 
+                onClick={() => setShowScenarioList(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {loadingScenarios ? (
+                <div className="loading-state">
+                  <span className="spinner" /> Loading scenarios...
+                </div>
+              ) : savedScenarios.length === 0 ? (
+                <div className="empty-state">
+                  <p>No saved scenarios found.</p>
+                  <p>Create and save a scenario first.</p>
+                </div>
+              ) : (
+                <div className="scenario-list">
+                  {savedScenarios.map((scenario) => (
+                    <div key={scenario._id} className="scenario-item">
+                      <div className="scenario-info">
+                        <h4>{scenario.name}</h4>
+                        <p>{scenario.description || 'No description'}</p>
+                        <div className="scenario-meta">
+                          <span>Nodes: {scenario.nodes?.length || 0}</span>
+                          <span>Status: {scenario.status}</span>
+                          <span>Created: {new Date(scenario.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="scenario-actions">
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => loadScenario(scenario._id)}
+                        >
+                          Load
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => deleteScenario(scenario._id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

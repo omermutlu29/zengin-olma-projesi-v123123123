@@ -11,10 +11,17 @@
   --ring: rgba(99,102,241,.22);
   --accent: #2563eb;
 
-  --status-idle: #9ca3af;    /* gri */
-  --status-running: #f59e0b; /* sarı */
-  --status-success: #10b981; /* yeşil */
-  --status-fail: #ef4444;    /* kırmızı */
+  --status-idle: #6b7280;    /* gri - muted ile uyumlu */
+  --status-running: #f59e0b; /* sarı - amber */
+  --status-success: #10b981; /* yeşil - emerald */
+  --status-fail: #ef4444;    /* kırmızı - red */
+
+  /* HTTP Method Colors - Brand Colors */
+  --method-get: #10b981;     /* emerald - yeşil */
+  --method-post: #f59e0b;    /* amber - turuncu */
+  --method-put: #3b82f6;     /* blue - mavi */
+  --method-delete: #ef4444;  /* red - kırmızı */
+  --method-patch: #8b5cf6;   /* violet - mor */
 
   --radius: 12px;
   --shadow-lg: 0 10px 24px rgba(15, 23, 42, .08);
@@ -35,6 +42,13 @@
   --status-running: #f59e0b;
   --status-success: #34d399;
   --status-fail: #f87171;
+
+  /* HTTP Method Colors - Dark Mode */
+  --method-get: #34d399;     /* emerald - yeşil */
+  --method-post: #f59e0b;    /* amber - turuncu */
+  --method-put: #60a5fa;     /* blue - mavi */
+  --method-delete: #f87171;  /* red - kırmızı */
+  --method-patch: #a78bfa;   /* violet - mor */
 
   --shadow-lg: 0 10px 28px rgba(0,0,0,.35);
 }
@@ -359,11 +373,116 @@ textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Me
 .node-mini {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 20px;
   min-width: 220px;
   box-shadow: var(--shadow-lg);
   position: relative;
   transition: all 0.2s ease;
+}
+
+/* React Flow node container'ına border-radius ver */
+.react-flow__node {
+  border-radius: 20px !important;
+}
+
+.react-flow__node-custom {
+  border-radius: 20px !important;
+}
+
+/* === Senaryo Listesi Modal === */
+.scenario-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.scenario-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  transition: all 0.2s ease;
+}
+
+.scenario-item:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.scenario-info h4 {
+  margin: 0 0 4px 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.scenario-info p {
+  margin: 0 0 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.scenario-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.scenario-meta span {
+  background: var(--surface-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.scenario-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--accent);
+  opacity: 0.9;
+}
+
+.btn-danger {
+  background: var(--status-fail);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+  background: var(--status-fail);
+  opacity: 0.9;
+}
+
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+}
+
+.empty-state p {
+  margin: 4px 0;
 }
 
 /* ŞERİTİ KALDIR */
@@ -397,27 +516,35 @@ textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Me
               0 20px 40px rgba(34, 211, 238, 0.2) !important;
 }
 
-/* Tam arka plan renkleri (duruma göre) */
+/* Tam arka plan renkleri (duruma göre) - Brand Colors */
 .node-mini.status-idle {
-  background: var(--status-idle);
+  background: rgba(107, 114, 128, 0.1);
   border-color: var(--status-idle);
-  color: #111827; /* koyu metin */
+  border-width: 2px;
+  border-radius: 20px;
+  color: var(--text);
 }
 .node-mini.status-running {
-  background: var(--status-running);
+  background: rgba(245, 158, 11, 0.1);
   border-color: var(--status-running);
-  color: #111827;
+  border-width: 2px;
+  border-radius: 20px;
+  color: var(--text);
   animation: nodePulse 1s ease-in-out infinite;
 }
 .node-mini.status-success {
-  background: var(--status-success);
+  background: rgba(16, 185, 129, 0.1);
   border-color: var(--status-success);
-  color: #ffffff;
+  border-width: 2px;
+  border-radius: 20px;
+  color: var(--text);
 }
 .node-mini.status-fail {
-  background: var(--status-fail);
+  background: rgba(239, 68, 68, 0.1);
   border-color: var(--status-fail);
-  color: #ffffff;
+  border-width: 2px;
+  border-radius: 20px;
+  color: var(--text);
 }
 
 /* header ve tag’ler kontrastlı kalsın */
@@ -439,9 +566,15 @@ textarea.code { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Me
 
 .node-mini .tag {
   font-size:11px; padding:2px 6px; border:1px solid var(--border); border-radius:999px;
-  background:#eef2ff; color:#2563eb;
+  background: var(--surface-2); 
+  color: var(--text);
+  font-weight: 500;
 }
-:root[data-theme="dark"] .node-mini .tag { background:#0b2a36; color:#67e8f9; border-color:#153447; }
+:root[data-theme="dark"] .node-mini .tag { 
+  background: var(--surface-2); 
+  color: var(--text); 
+  border-color: var(--border); 
+}
 
 .node-mini.status-success .tag,
 .node-mini.status-fail .tag {

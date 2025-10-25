@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ReactFlow, Controls, Background, MiniMap,
   useNodesState, useEdgesState, addEdge, MarkerType
 } from "@xyflow/react";
-import { nodeTypes } from "./flow/nodeTypes";
-import InspectorSidebar from "./components/InspectorSidebar";
-import HarImportModal from "./components/HarImportModal";
-import AuthWrapper from "./components/AuthWrapper";
-import AdminLayout from "./components/AdminLayout";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
-import Scenarios from "./pages/Scenarios";
-import Users from "./pages/Users";
-import Executions from "./pages/Executions";
-import Studio from "./pages/Studio";
+import { nodeTypes } from "../flow/nodeTypes";
+import InspectorSidebar from "../components/InspectorSidebar";
+import HarImportModal from "../components/HarImportModal";
+import AuthWrapper from "../components/AuthWrapper";
 import axios from "axios";
 
 // Axios interceptor - API URL'lerini proxy'ye yönlendir
@@ -25,7 +18,10 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-export default function App() {
+export default function Studio() {
+  const { scenarioId } = useParams();
+  const navigate = useNavigate();
+  
   // Tema
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   useEffect(() => {
@@ -36,7 +32,6 @@ export default function App() {
   // Sidebar pozisyon ve genişlik
   const [sidebarPosition, setSidebarPosition] = useState(() => {
     const saved = localStorage.getItem("sidebarPosition") || "left";
-    // Eski top/bottom değerleri varsa left'e çevir
     return (saved === "top" || saved === "bottom") ? "left" : saved;
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -68,7 +63,7 @@ export default function App() {
   const [showHarModal, setShowHarModal] = useState(false);
   const [scenarioName, setScenarioName] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
-  const [savedScenarioId, setSavedScenarioId] = useState(null);
+  const [savedScenarioId, setSavedScenarioId] = useState(scenarioId || null);
   const [executionId, setExecutionId] = useState(null);
   const [wsConnection, setWsConnection] = useState(null);
   const [executionStatus, setExecutionStatus] = useState(null);
@@ -594,6 +589,8 @@ export default function App() {
       const scenarioData = {
         name: scenarioName,
         description: scenarioDescription,
+        owner: "507f1f77bcf86cd799439011", // Default user ID - bu gerçek user ID olmalı
+        project: "507f1f77bcf86cd799439012", // Default project ID - bu gerçek project ID olmalı
         nodes: nodes.map(node => ({
           id: node.id,
           type: node.type,
@@ -641,6 +638,8 @@ export default function App() {
 
   // Senaryo çalıştırma
   const executeScenario = async () => {
+    console.log('Execute scenario called, savedScenarioId:', savedScenarioId);
+    
     if (!savedScenarioId) {
       alert('Please save the scenario first');
       return;
@@ -650,10 +649,13 @@ export default function App() {
       setRunning(true);
       setExecutionStatus(null);
 
+      console.log('Sending execution request to:', `http://localhost:3001/api/execution/start/${savedScenarioId}`);
+      
       const response = await fetch(`http://localhost:3001/api/execution/start/${savedScenarioId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           variables: {},
@@ -661,8 +663,11 @@ export default function App() {
         })
       });
 
+      console.log('Execution response status:', response.status);
+
       if (response.ok) {
         const result = await response.json();
+        console.log('Execution started successfully:', result);
         setExecutionId(result.executionId);
         
         // WebSocket'e execution'a subscribe ol
@@ -674,6 +679,7 @@ export default function App() {
         }
       } else {
         const error = await response.json();
+        console.error('Execution failed:', error);
         alert('Error starting execution: ' + error.error);
         setRunning(false);
       }
@@ -856,7 +862,7 @@ export default function App() {
             )
           );
 
-          // shadow’u da güncelle ki sonraki istek placeholder çözerken runtime’ı görsün
+          // shadow'u da güncelle ki sonraki istek placeholder çözerken runtime'ı görsün
           const idx = shadow.findIndex((s) => s.id === n.id);
           if (idx >= 0) {
             shadow[idx] = {
@@ -909,375 +915,376 @@ export default function App() {
     }
   };
 
-  // Studio component (flow editor)
-  const StudioComponent = () => (
-    <div className={`shell shell--${sidebarPosition}`}>
-      {/* ◀︎ Inspector Sidebar */}
-      <InspectorSidebar
-        selectedNode={useMemo(() => nodes.find((n)=>n.id===selectedId) || null, [nodes, selectedId])}
-        linking={linking}
-        onAddNode={addNode}
-        onStartLink={(nodeId, fieldPath) => setLinking({ nodeId, fieldPath })}
-        onPickPath={(_, sourcePath) => {
-          const selectedNode = nodes.find((n)=>n.id===selectedId);
-          if (!linking || !selectedNode) return;
-          const expr = `{{${selectedNode.id}.${sourcePath}}}`;
-          updateNodeField(linking.nodeId, linking.fieldPath, expr);
-          setEdges((eds) => [
-            ...eds,
-            {
-              id: `link-${Date.now()}`,
-              source: selectedNode.id,
-              target: linking.nodeId,
-              type: "smoothstep",
-              animated: true,
-              style: { stroke: "var(--accent)", strokeWidth: 2, strokeDasharray: "5 5" },
-              data: { from: sourcePath, to: linking.fieldPath },
-            },
-          ]);
-          setLinking(null);
-        }}
-        onChangeField={updateNodeField}
-        onDelete={deleteNodeById}
-        position={sidebarPosition}
-        onPositionChange={setSidebarPosition}
-        width={sidebarWidth}
-        onWidthChange={setSidebarWidth}
-      />
-
-      {/* ▶︎ Main (Toolbar + Canvas) */}
-      <div className="main">
-        <div className="app__toolbar">
-          
-          <button className="btn primary" onClick={addNode}>+ Add Request</button>
-
-          <button
-            className="btn danger"
-            onClick={deleteSelected}
-            disabled={!selectedId && !(selectedEdges?.length)}
-            title="Delete selected node or edges"
-            style={{ marginLeft: 8 }}
-          >
-            🗑️
-          </button>
-
-          <button
-            className="btn"
-            onClick={() => setShowHarModal(true)}
-            title="Import HAR file"
-            style={{ marginLeft: 8 }}
-          >
-            📁 Import HAR
-          </button>
-
-          {/* Senaryo kaydetme - daha büyük input */}
-          <div style={{ marginLeft: 8, display: "flex", gap: 4, alignItems: "center" }}>
-            <input
-              type="text"
-              placeholder="Scenario name"
-              value={scenarioName}
-              onChange={(e) => setScenarioName(e.target.value)}
-              style={{ 
-                padding: "8px 12px", 
-                border: "1px solid #ccc", 
-                borderRadius: "4px", 
-                fontSize: "14px",
-                minWidth: "200px"
-              }}
-            />
-            <button
-              className="btn"
-              onClick={saveScenario}
-              disabled={!scenarioName.trim()}
-              title="Save scenario to backend"
-            >
-              💾 Save
-            </button>
-          </div>
-
-          {/* Senaryo yükleme */}
-          <button
-            className="btn"
-            onClick={() => {
-              setShowScenarioList(true);
-              loadScenarios();
-            }}
-            style={{ marginLeft: 8 }}
-          >
-            📂 Load
-          </button>
-
-          {/* Senaryo çalıştırma */}
-          <button
-            className={`btn ${running ? "loading" : ""}`}
-            onClick={executeScenario}
-            disabled={running || !savedScenarioId}
-            title="Execute scenario via backend"
-            style={{ marginLeft: 8 }}
-          >
-            {running ? (<><span className="spinner" /> Executing...</>) : "🚀 Execute"}
-          </button>
-
-          {/* Local run (eski) */}
-          <button
-            className={`btn ${running ? "loading" : ""}`}
-            onClick={runAll}
-            disabled={running}
-            title="Run scenario locally"
-            style={{ marginLeft: 8 }}
-          >
-            {running ? (<><span className="spinner" /> Running...</>) : "🏃 Run Local"}
-          </button>
-
-          {/* Save/Load buttons */}
-          <div style={{ marginLeft: 8, display: "flex", gap: 8 }}>
-            <button
-              className="btn"
-              onClick={exportToJSON}
-              title="Export to JSON file"
-            >
-              💾 Export
-            </button>
-            
-            <label className="btn" style={{ cursor: "pointer", margin: 0 }} title="Import from JSON file">
-              📂 Import
-              <input
-                type="file"
-                accept="application/json"
-                onChange={importFromJSON}
-                style={{ display: "none" }}
-              />
-            </label>
-
-            <button
-              className="btn danger"
-              onClick={clearAll}
-              title="Clear all nodes and edges"
-            >
-              🗑️ Clear All
-            </button>
-          </div>
-
-          {/* Execution Status */}
-          {executionStatus && (
-            <div style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#f0f0f0", borderRadius: "4px", fontSize: "12px" }}>
-              <strong>Execution:</strong> {executionStatus.event} 
-              {executionStatus.data?.summary && (
-                <span style={{ marginLeft: 8 }}>
-                  ({executionStatus.data.summary.completedNodes}/{executionStatus.data.summary.totalNodes} nodes)
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* WebSocket Status */}
-          <div style={{ marginLeft: 8, fontSize: "12px", color: wsConnection ? "#4CAF50" : "#f44336" }}>
-            {wsConnection ? "🟢 Connected" : "🔴 Disconnected"}
-          </div>
-
-          {/* sağa yasla + theme switch */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            <label className="switch" title="Toggle dark mode">
-              <span className="small">🌞</span>
-              <input
-                type="checkbox"
-                checked={theme === "dark"}
-                onChange={(e) => setTheme(e.target.checked ? "dark" : "light")}
-              />
-              <span className="small">🌙</span>
-            </label>
-          </div>
-        </div>
-
-        <div className="flow-wrap">
-          <ReactFlow
-            ref={rf}
-            nodes={nodesWithHandlers}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            nodeTypes={nodeTypes}
-            fitView
-            proOptions={{ hideAttribution: true }}
-            onNodeClick={handleNodeClick}
-            onSelectionChange={(sel) => {
-              const first = sel?.nodes?.[0];
-              setSelectedId(first?.id ?? null);
-              setSelectedEdges(sel?.edges ?? []);
-            }}
-          >
-            <MiniMap pannable zoomable />
-            <Controls />
-            <Background gap={20} />
-          </ReactFlow>
-        </div>
-      </div>
-
-      {/* HAR Import Modal */}
-      {showHarModal && (
-        <HarImportModal
-          onClose={() => setShowHarModal(false)}
-          onImport={importHarEntries}
-        />
-      )}
-
-      {/* Senaryo Listesi Modal */}
-      {showScenarioList && (
-        <div className="modal-overlay">
-          <div className="scenario-modal">
-            <div className="scenario-modal-header">
-              <div className="scenario-modal-title">
-                <div className="scenario-modal-icon">📂</div>
-                <h3>Load Scenario</h3>
-                <div className="scenario-count">{savedScenarios.length} scenarios</div>
-              </div>
-              <button
-                className="scenario-modal-close"
-                onClick={() => setShowScenarioList(false)}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </div>
-
-            <div className="scenario-modal-body">
-              {loadingScenarios ? (
-                <div className="scenario-loading">
-                  <div className="scenario-spinner"></div>
-                  <p>Loading scenarios...</p>
-                </div>
-              ) : savedScenarios.length === 0 ? (
-                <div className="scenario-empty">
-                  <div className="scenario-empty-icon">📝</div>
-                  <h4>No scenarios found</h4>
-                  <p>Create and save your first scenario to get started.</p>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => setShowScenarioList(false)}
-                  >
-                    Create New Scenario
-                  </button>
-                </div>
-              ) : (
-                <div className="scenario-grid">
-                  {savedScenarios.map((scenario) => (
-                    <div key={scenario._id} className="scenario-card">
-                      <div className="scenario-card-header">
-                        <div className="scenario-card-title">
-                          <h4>{scenario.name}</h4>
-                          <div className={`scenario-status scenario-status-${scenario.status}`}>
-                            {scenario.status === 'ready' && '✅'}
-                            {scenario.status === 'running' && '🔄'}
-                            {scenario.status === 'completed' && '✅'}
-                            {scenario.status === 'failed' && '❌'}
-                            {scenario.status}
-                          </div>
-                        </div>
-                        <div className="scenario-card-actions">
-                          <button
-                            className="scenario-btn scenario-btn-primary"
-                            onClick={() => loadScenario(scenario._id)}
-                            title="Load scenario"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            Load
-                          </button>
-                          <button
-                            className="scenario-btn scenario-btn-danger"
-                            onClick={() => deleteScenario(scenario._id)}
-                            title="Delete scenario"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                              <polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="scenario-card-content">
-                        <p className="scenario-description">
-                          {scenario.description || 'No description available'}
-                        </p>
-                        
-                        <div className="scenario-stats">
-                          <div className="scenario-stat">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-                              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" stroke="currentColor" strokeWidth="2"/>
-                            </svg>
-                            <span>{scenario.nodes?.length || 0} nodes</span>
-                          </div>
-                          <div className="scenario-stat">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                              <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2"/>
-                              <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2"/>
-                              <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
-                            </svg>
-                            <span>{new Date(scenario.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  // Scenario yükleme - URL'den scenarioId varsa yükle
+  useEffect(() => {
+    if (scenarioId) {
+      console.log('Loading scenario:', scenarioId);
+      loadScenario(scenarioId);
+    } else {
+      // Yeni scenario - state'i temizle
+      console.log('New scenario - clearing state');
+      setNodes([]);
+      setEdges([]);
+      setScenarioName("");
+      setScenarioDescription("");
+      setSavedScenarioId(null);
+      setExecutionId(null);
+      setExecutionStatus(null);
+      setShowScenarioList(false);
+    }
+  }, [scenarioId]);
 
   return (
-    <Router>
-      <AuthWrapper>
-        <Routes>
-          {/* Admin Panel Routes */}
-          <Route path="/" element={
-            <AdminLayout>
-              <Navigate to="/dashboard" replace />
-            </AdminLayout>
-          } />
-          <Route path="/dashboard" element={
-            <AdminLayout>
-              <Dashboard />
-            </AdminLayout>
-          } />
-          <Route path="/projects" element={
-            <AdminLayout>
-              <Projects />
-            </AdminLayout>
-          } />
-          <Route path="/scenarios" element={
-            <AdminLayout>
-              <Scenarios />
-            </AdminLayout>
-          } />
-          <Route path="/users" element={
-            <AdminLayout>
-              <Users />
-            </AdminLayout>
-          } />
-          <Route path="/executions" element={
-            <AdminLayout>
-              <Executions />
-            </AdminLayout>
-          } />
-          
-          {/* Studio Routes - No Admin Panel */}
-          <Route path="/studio" element={<Studio />} />
-          <Route path="/studio/:projectId" element={<Studio />} />
-          <Route path="/studio/:projectId/:scenarioId" element={<Studio />} />
-          <Route path="/scenario/:scenarioId" element={<Studio />} />
-        </Routes>
-      </AuthWrapper>
-    </Router>
+    <AuthWrapper>
+      <div className="studio-container">
+        <div className="studio-header">
+          <div className="studio-title">
+            <h1>🎬 Scenario Studio</h1>
+            <div className="studio-breadcrumb">
+              {scenarioId ? `Editing: ${scenarioName || 'Loading...'}` : 'New Scenario'}
+            </div>
+          </div>
+          <div className="studio-actions">
+            <button 
+              onClick={() => navigate('/scenarios')}
+              className="btn btn-secondary"
+            >
+              ← Back to Scenarios
+            </button>
+          </div>
+        </div>
+
+        <div className={`shell shell--${sidebarPosition}`}>
+          {/* ◀︎ Inspector Sidebar */}
+          <InspectorSidebar
+            selectedNode={useMemo(() => nodes.find((n)=>n.id===selectedId) || null, [nodes, selectedId])}
+            linking={linking}
+            onAddNode={addNode}
+            onStartLink={(nodeId, fieldPath) => setLinking({ nodeId, fieldPath })}
+            onPickPath={(_, sourcePath) => {
+              const selectedNode = nodes.find((n)=>n.id===selectedId);
+              if (!linking || !selectedNode) return;
+              const expr = `{{${selectedNode.id}.${sourcePath}}}`;
+              updateNodeField(linking.nodeId, linking.fieldPath, expr);
+              setEdges((eds) => [
+                ...eds,
+                {
+                  id: `link-${Date.now()}`,
+                  source: selectedNode.id,
+                  target: linking.nodeId,
+                  type: "smoothstep",
+                  animated: true,
+                  style: { stroke: "var(--accent)", strokeWidth: 2, strokeDasharray: "5 5" },
+                  data: { from: sourcePath, to: linking.fieldPath },
+                },
+              ]);
+              setLinking(null);
+            }}
+            onChangeField={updateNodeField}
+            onDelete={deleteNodeById}
+            position={sidebarPosition}
+            onPositionChange={setSidebarPosition}
+            width={sidebarWidth}
+            onWidthChange={setSidebarWidth}
+          />
+
+          {/* ▶︎ Main (Toolbar + Canvas) */}
+          <div className="main">
+            <div className="app__toolbar">
+              
+              <button className="btn primary" onClick={addNode}>+ Add Request</button>
+
+              <button
+                className="btn danger"
+                onClick={deleteSelected}
+                disabled={!selectedId && !(selectedEdges?.length)}
+                title="Delete selected node or edges"
+                style={{ marginLeft: 8 }}
+              >
+                🗑️
+              </button>
+
+              <button
+                className="btn"
+                onClick={() => setShowHarModal(true)}
+                title="Import HAR file"
+                style={{ marginLeft: 8 }}
+              >
+                📁 Import HAR
+              </button>
+
+              {/* Senaryo kaydetme - daha büyük input */}
+              <div style={{ marginLeft: 8, display: "flex", gap: 4, alignItems: "center" }}>
+                <input
+                  type="text"
+                  placeholder="Scenario name"
+                  value={scenarioName}
+                  onChange={(e) => setScenarioName(e.target.value)}
+                  style={{ 
+                    padding: "8px 12px", 
+                    border: "1px solid #ccc", 
+                    borderRadius: "4px", 
+                    fontSize: "14px",
+                    minWidth: "200px"
+                  }}
+                />
+                <button
+                  className="btn"
+                  onClick={saveScenario}
+                  disabled={!scenarioName.trim()}
+                  title="Save scenario to backend"
+                >
+                  💾 Save
+                </button>
+              </div>
+
+              {/* Senaryo yükleme */}
+              <button
+                className="btn"
+                onClick={() => {
+                  setShowScenarioList(true);
+                  loadScenarios();
+                }}
+                style={{ marginLeft: 8 }}
+              >
+                📂 Load
+              </button>
+
+              {/* Senaryo çalıştırma */}
+              <button
+                className={`btn ${running ? "loading" : ""}`}
+                onClick={executeScenario}
+                disabled={running || !savedScenarioId}
+                title="Execute scenario via backend"
+                style={{ marginLeft: 8 }}
+              >
+                {running ? (<><span className="spinner" /> Executing...</>) : "🚀 Execute"}
+              </button>
+
+              {/* Local run (eski) */}
+              <button
+                className={`btn ${running ? "loading" : ""}`}
+                onClick={runAll}
+                disabled={running}
+                title="Run scenario locally"
+                style={{ marginLeft: 8 }}
+              >
+                {running ? (<><span className="spinner" /> Running...</>) : "🏃 Run Local"}
+              </button>
+
+              {/* Save/Load buttons */}
+              <div style={{ marginLeft: 8, display: "flex", gap: 8 }}>
+                <button
+                  className="btn"
+                  onClick={exportToJSON}
+                  title="Export to JSON file"
+                >
+                  💾 Export
+                </button>
+                
+                <label className="btn" style={{ cursor: "pointer", margin: 0 }} title="Import from JSON file">
+                  📂 Import
+                  <input
+                    type="file"
+                    accept="application/json"
+                    onChange={importFromJSON}
+                    style={{ display: "none" }}
+                  />
+                </label>
+
+                <button
+                  className="btn danger"
+                  onClick={clearAll}
+                  title="Clear all nodes and edges"
+                >
+                  🗑️ Clear All
+                </button>
+              </div>
+
+              {/* Execution Status */}
+              {executionStatus && (
+                <div style={{ 
+                  marginLeft: 8, 
+                  padding: "4px 8px", 
+                  backgroundColor: "#2a2a2a", 
+                  color: "#ffffff",
+                  borderRadius: "4px", 
+                  fontSize: "12px",
+                  border: "1px solid #444"
+                }}>
+                  <strong>Execution:</strong> {executionStatus.event} 
+                  {executionStatus.data?.summary && (
+                    <span style={{ marginLeft: 8, color: "#4CAF50" }}>
+                      ({executionStatus.data.summary.completedNodes}/{executionStatus.data.summary.totalNodes} nodes)
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* WebSocket Status */}
+              <div style={{ marginLeft: 8, fontSize: "12px", color: wsConnection ? "#4CAF50" : "#f44336" }}>
+                {wsConnection ? "🟢 Connected" : "🔴 Disconnected"}
+              </div>
+
+              {/* sağa yasla + theme switch */}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+                <label className="switch" title="Toggle dark mode">
+                  <span className="small">🌞</span>
+                  <input
+                    type="checkbox"
+                    checked={theme === "dark"}
+                    onChange={(e) => setTheme(e.target.checked ? "dark" : "light")}
+                  />
+                  <span className="small">🌙</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flow-wrap">
+              <ReactFlow
+                ref={rf}
+                nodes={nodesWithHandlers}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                fitView
+                proOptions={{ hideAttribution: true }}
+                onNodeClick={handleNodeClick}
+                onSelectionChange={(sel) => {
+                  const first = sel?.nodes?.[0];
+                  setSelectedId(first?.id ?? null);
+                  setSelectedEdges(sel?.edges ?? []);
+                }}
+              >
+                <MiniMap pannable zoomable />
+                <Controls />
+                <Background gap={20} />
+              </ReactFlow>
+            </div>
+          </div>
+
+          {/* HAR Import Modal */}
+          {showHarModal && (
+            <HarImportModal
+              onClose={() => setShowHarModal(false)}
+              onImport={importHarEntries}
+            />
+          )}
+
+          {/* Senaryo Listesi Modal */}
+          {showScenarioList && (
+            <div className="modal-overlay">
+              <div className="scenario-modal">
+                <div className="scenario-modal-header">
+                  <div className="scenario-modal-title">
+                    <div className="scenario-modal-icon">📂</div>
+                    <h3>Load Scenario</h3>
+                    <div className="scenario-count">{savedScenarios.length} scenarios</div>
+                  </div>
+                  <button
+                    className="scenario-modal-close"
+                    onClick={() => setShowScenarioList(false)}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="scenario-modal-body">
+                  {loadingScenarios ? (
+                    <div className="scenario-loading">
+                      <div className="scenario-spinner"></div>
+                      <p>Loading scenarios...</p>
+                    </div>
+                  ) : savedScenarios.length === 0 ? (
+                    <div className="scenario-empty">
+                      <div className="scenario-empty-icon">📝</div>
+                      <h4>No scenarios found</h4>
+                      <p>Create and save your first scenario to get started.</p>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => setShowScenarioList(false)}
+                      >
+                        Create New Scenario
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="scenario-grid">
+                      {savedScenarios.map((scenario) => (
+                        <div key={scenario._id} className="scenario-card">
+                          <div className="scenario-card-header">
+                            <div className="scenario-card-title">
+                              <h4>{scenario.name}</h4>
+                              <div className={`scenario-status scenario-status-${scenario.status}`}>
+                                {scenario.status === 'ready' && '✅'}
+                                {scenario.status === 'running' && '🔄'}
+                                {scenario.status === 'completed' && '✅'}
+                                {scenario.status === 'failed' && '❌'}
+                                {scenario.status}
+                              </div>
+                            </div>
+                            <div className="scenario-card-actions">
+                              <button
+                                className="scenario-btn scenario-btn-primary"
+                                onClick={() => loadScenario(scenario._id)}
+                                title="Load scenario"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                Load
+                              </button>
+                              <button
+                                className="scenario-btn scenario-btn-danger"
+                                onClick={() => deleteScenario(scenario._id)}
+                                title="Delete scenario"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                  <polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="scenario-card-content">
+                            <p className="scenario-description">
+                              {scenario.description || 'No description available'}
+                            </p>
+                            
+                            <div className="scenario-stats">
+                              <div className="scenario-stat">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                  <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" stroke="currentColor" strokeWidth="2"/>
+                                </svg>
+                                <span>{scenario.nodes?.length || 0} nodes</span>
+                              </div>
+                              <div className="scenario-stat">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+                                  <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2"/>
+                                  <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2"/>
+                                  <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
+                                </svg>
+                                <span>{new Date(scenario.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </AuthWrapper>
   );
 }

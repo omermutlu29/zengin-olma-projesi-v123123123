@@ -122,7 +122,7 @@ export default function Scenarios() {
   };
 
   const handleOpenStudio = (scenarioId, projectId) => {
-    const studioUrl = `/studio/${projectId || 'new'}/${scenarioId}`;
+    const studioUrl = `/scenario/${scenarioId}`;
     window.open(studioUrl, '_blank');
   };
 

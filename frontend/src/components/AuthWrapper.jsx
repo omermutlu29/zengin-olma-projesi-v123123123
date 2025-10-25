@@ -98,18 +98,7 @@ const AuthWrapper = ({ children }) => {
 
   return (
     <AuthContext.Provider value={authValue}>
-      <div className="auth-wrapper">
-        <div className="auth-header">
-          <div className="user-info">
-            <span>Welcome, {user?.firstName} {user?.lastName}</span>
-            <span className="user-role">{user?.roles?.[0]}</span>
-          </div>
-          <button className="btn btn-secondary" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-        {children}
-      </div>
+      {children}
     </AuthContext.Provider>
   );
 };

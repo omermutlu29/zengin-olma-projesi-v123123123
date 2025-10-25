@@ -9,10 +9,16 @@ export async function executionRoutes(fastify, options) {
       const { scenarioId } = request.params;
       const { variables = {}, settings = {} } = request.body;
 
+      fastify.log.info(`Execution request for scenario: ${scenarioId}`);
+      fastify.log.info(`Request body:`, { variables, settings });
+
       const scenario = await Scenario.findById(scenarioId);
       if (!scenario) {
+        fastify.log.error(`Scenario not found: ${scenarioId}`);
         return reply.status(404).send({ error: 'Scenario not found' });
       }
+
+      fastify.log.info(`Found scenario: ${scenario.name}`);
 
       if (scenario.status === 'running') {
         return reply.status(400).send({ error: 'Scenario is already running' });
@@ -28,6 +34,27 @@ export async function executionRoutes(fastify, options) {
       });
 
       await execution.save();
+
+      // Ensure required fields are present
+      if (!scenario.owner) {
+        scenario.owner = request.user?._id || request.headers['x-user-id'];
+      }
+      if (!scenario.project) {
+        // Create a default project or use existing one
+        const { Project } = await import('../models/Project.js');
+        const defaultProject = await Project.findOne({ name: 'Default Project' });
+        if (!defaultProject) {
+          const newProject = new Project({
+            name: 'Default Project',
+            description: 'Default project for scenarios',
+            owner: scenario.owner
+          });
+          await newProject.save();
+          scenario.project = newProject._id;
+        } else {
+          scenario.project = defaultProject._id;
+        }
+      }
 
       // Update scenario status
       scenario.status = 'running';
@@ -45,8 +72,18 @@ export async function executionRoutes(fastify, options) {
         status: 'running'
       });
     } catch (error) {
-      fastify.log.error(error);
-      return reply.status(500).send({ error: 'Failed to start execution' });
+      fastify.log.error('Execution error details:', error);
+      fastify.log.error('Error message:', error.message);
+      fastify.log.error('Error stack:', error.stack);
+      fastify.log.error('Error name:', error.name);
+      if (error.errors) {
+        fastify.log.error('Validation errors:', error.errors);
+      }
+      return reply.status(500).send({ 
+        error: 'Failed to start execution',
+        details: error.message,
+        stack: error.stack
+      });
     }
   });
 

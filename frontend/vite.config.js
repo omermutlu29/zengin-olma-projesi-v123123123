@@ -4,20 +4,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: { 
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: 'https://api.wiyostb.com.tr',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            // CORS headers'ları kaldır
-            proxyReq.removeHeader('origin');
-          });
-        }
-      }
-    }
+    port: process.env.PORT || 5174,
+    host: true
+  },
+  preview: {
+    port: process.env.PORT || 4173,
+    host: true
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: true
   }
 })

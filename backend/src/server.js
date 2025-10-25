@@ -5,6 +5,8 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { scenarioRoutes } from './routes/scenarios.js';
 import { executionRoutes } from './routes/execution.js';
+import { authRoutes } from './routes/auth.js';
+import { adminRoutes } from './routes/admin.js';
 import { websocketHandler } from './websocket/handler.js';
 
 // Load environment variables
@@ -21,15 +23,29 @@ const fastify = Fastify({
 
 // Register plugins
 await fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5174',
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://127.0.0.1:5174',
+      'http://127.0.0.1:5175'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'), false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 });
 
-await fastify.register(websocket, {
-  options: {
-    path: process.env.WS_PATH || '/ws'
-  }
-});
+await fastify.register(websocket);
 
 // MongoDB connection
 const connectDB = async () => {
@@ -43,6 +59,8 @@ const connectDB = async () => {
 };
 
 // Register routes
+await fastify.register(authRoutes, { prefix: '/api/auth' });
+await fastify.register(adminRoutes, { prefix: '/api/admin' });
 await fastify.register(scenarioRoutes, { prefix: '/api/scenarios' });
 await fastify.register(executionRoutes, { prefix: '/api/execution' });
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import {
   ReactFlow, Controls, Background, MiniMap,
   useNodesState, useEdgesState, addEdge, MarkerType
@@ -6,6 +7,11 @@ import {
 import { nodeTypes } from "./flow/nodeTypes";
 import InspectorSidebar from "./components/InspectorSidebar";
 import HarImportModal from "./components/HarImportModal";
+import AuthWrapper from "./components/AuthWrapper";
+import AdminLayout from "./components/AdminLayout";
+import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/Projects";
+import Scenarios from "./pages/Scenarios";
 import axios from "axios";
 
 // Axios interceptor - API URL'lerini proxy'ye yönlendir
@@ -900,7 +906,8 @@ export default function App() {
     }
   };
 
-  return (
+  // Studio component (flow editor)
+  const StudioComponent = () => (
     <div className={`shell shell--${sidebarPosition}`}>
       {/* ◀︎ Inspector Sidebar */}
       <InspectorSidebar
@@ -948,7 +955,7 @@ export default function App() {
             title="Delete selected node or edges"
             style={{ marginLeft: 8 }}
           >
-            🗑 Delete Selected
+            🗑️
           </button>
 
           <button
@@ -960,14 +967,20 @@ export default function App() {
             📁 Import HAR
           </button>
 
-          {/* Senaryo kaydetme */}
+          {/* Senaryo kaydetme - daha büyük input */}
           <div style={{ marginLeft: 8, display: "flex", gap: 4, alignItems: "center" }}>
             <input
               type="text"
               placeholder="Scenario name"
               value={scenarioName}
               onChange={(e) => setScenarioName(e.target.value)}
-              style={{ padding: "4px 8px", border: "1px solid #ccc", borderRadius: "4px", fontSize: "12px" }}
+              style={{ 
+                padding: "8px 12px", 
+                border: "1px solid #ccc", 
+                borderRadius: "4px", 
+                fontSize: "14px",
+                minWidth: "200px"
+              }}
             />
             <button
               className="btn"
@@ -975,7 +988,7 @@ export default function App() {
               disabled={!scenarioName.trim()}
               title="Save scenario to backend"
             >
-              💾 Save Scenario
+              💾 Save
             </button>
           </div>
 
@@ -988,7 +1001,7 @@ export default function App() {
             }}
             style={{ marginLeft: 8 }}
           >
-            📂 Load Scenario
+            📂 Load
           </button>
 
           {/* Senaryo çalıştırma */}
@@ -999,7 +1012,7 @@ export default function App() {
             title="Execute scenario via backend"
             style={{ marginLeft: 8 }}
           >
-            {running ? (<><span className="spinner" /> Executing...</>) : "🚀 Execute Scenario"}
+            {running ? (<><span className="spinner" /> Executing...</>) : "🚀 Execute"}
           </button>
 
           {/* Local run (eski) */}
@@ -1038,7 +1051,7 @@ export default function App() {
               onClick={clearAll}
               title="Clear all nodes and edges"
             >
-              🗑 Clear All
+              🗑️ Clear All
             </button>
           </div>
 
@@ -1109,53 +1122,104 @@ export default function App() {
       {/* Senaryo Listesi Modal */}
       {showScenarioList && (
         <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>📂 Load Scenario</h3>
-              <button 
-                className="btn-close" 
+          <div className="scenario-modal">
+            <div className="scenario-modal-header">
+              <div className="scenario-modal-title">
+                <div className="scenario-modal-icon">📂</div>
+                <h3>Load Scenario</h3>
+                <div className="scenario-count">{savedScenarios.length} scenarios</div>
+              </div>
+              <button
+                className="scenario-modal-close"
                 onClick={() => setShowScenarioList(false)}
               >
-                ×
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
             </div>
-            
-            <div className="modal-body">
+
+            <div className="scenario-modal-body">
               {loadingScenarios ? (
-                <div className="loading-state">
-                  <span className="spinner" /> Loading scenarios...
+                <div className="scenario-loading">
+                  <div className="scenario-spinner"></div>
+                  <p>Loading scenarios...</p>
                 </div>
               ) : savedScenarios.length === 0 ? (
-                <div className="empty-state">
-                  <p>No saved scenarios found.</p>
-                  <p>Create and save a scenario first.</p>
+                <div className="scenario-empty">
+                  <div className="scenario-empty-icon">📝</div>
+                  <h4>No scenarios found</h4>
+                  <p>Create and save your first scenario to get started.</p>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => setShowScenarioList(false)}
+                  >
+                    Create New Scenario
+                  </button>
                 </div>
               ) : (
-                <div className="scenario-list">
+                <div className="scenario-grid">
                   {savedScenarios.map((scenario) => (
-                    <div key={scenario._id} className="scenario-item">
-                      <div className="scenario-info">
-                        <h4>{scenario.name}</h4>
-                        <p>{scenario.description || 'No description'}</p>
-                        <div className="scenario-meta">
-                          <span>Nodes: {scenario.nodes?.length || 0}</span>
-                          <span>Status: {scenario.status}</span>
-                          <span>Created: {new Date(scenario.createdAt).toLocaleDateString()}</span>
+                    <div key={scenario._id} className="scenario-card">
+                      <div className="scenario-card-header">
+                        <div className="scenario-card-title">
+                          <h4>{scenario.name}</h4>
+                          <div className={`scenario-status scenario-status-${scenario.status}`}>
+                            {scenario.status === 'ready' && '✅'}
+                            {scenario.status === 'running' && '🔄'}
+                            {scenario.status === 'completed' && '✅'}
+                            {scenario.status === 'failed' && '❌'}
+                            {scenario.status}
+                          </div>
+                        </div>
+                        <div className="scenario-card-actions">
+                          <button
+                            className="scenario-btn scenario-btn-primary"
+                            onClick={() => loadScenario(scenario._id)}
+                            title="Load scenario"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            Load
+                          </button>
+                          <button
+                            className="scenario-btn scenario-btn-danger"
+                            onClick={() => deleteScenario(scenario._id)}
+                            title="Delete scenario"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                              <polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                      <div className="scenario-actions">
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => loadScenario(scenario._id)}
-                        >
-                          Load
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => deleteScenario(scenario._id)}
-                        >
-                          Delete
-                        </button>
+                      
+                      <div className="scenario-card-content">
+                        <p className="scenario-description">
+                          {scenario.description || 'No description available'}
+                        </p>
+                        
+                        <div className="scenario-stats">
+                          <div className="scenario-stat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+                              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" stroke="currentColor" strokeWidth="2"/>
+                            </svg>
+                            <span>{scenario.nodes?.length || 0} nodes</span>
+                          </div>
+                          <div className="scenario-stat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+                              <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2"/>
+                              <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2"/>
+                              <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
+                            </svg>
+                            <span>{new Date(scenario.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1166,5 +1230,23 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+
+  return (
+    <Router>
+      <AuthWrapper>
+        <AdminLayout>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/scenarios" element={<Scenarios />} />
+            <Route path="/studio" element={<StudioComponent />} />
+            <Route path="/studio/:projectId" element={<StudioComponent />} />
+            <Route path="/studio/:projectId/:scenarioId" element={<StudioComponent />} />
+          </Routes>
+        </AdminLayout>
+      </AuthWrapper>
+    </Router>
   );
 }

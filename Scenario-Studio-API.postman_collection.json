@@ -1,0 +1,1085 @@
+{
+  "info": {
+    "name": "Scenario Studio API",
+    "description": "Enterprise Admin Panel API Collection for Scenario Studio",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "scenarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "executionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"test123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"department\": \"IT\",\n  \"position\": \"Developer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('token', response.token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    console.log('Token saved:', response.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Super\",\n  \"lastName\": \"Admin\",\n  \"phone\": \"+90 555 123 4567\",\n  \"department\": \"IT\",\n  \"position\": \"System Administrator\",\n  \"emailPreferences\": {\n    \"notifications\": true,\n    \"marketing\": false,\n    \"security\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "change-password"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "dashboard"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Get All Projects",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects?page=1&limit=10&status=active&search=Demo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "search",
+                  "value": "Demo"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Project by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('projectId', response._id);",
+                  "    console.log('Project ID saved:', response._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"THY Payment Service\",\n  \"description\": \"Turkish Airlines payment processing scenarios\",\n  \"status\": \"active\",\n  \"metadata\": {\n    \"domain\": \"payment\",\n    \"priority\": \"high\",\n    \"environment\": \"production\"\n  },\n  \"jenkinsConfig\": {\n    \"url\": \"https://jenkins.company.com\",\n    \"jobName\": \"thy-payment-tests\",\n    \"token\": \"jenkins-token-here\",\n    \"enabled\": true\n  },\n  \"emailConfig\": {\n    \"smtp\": {\n      \"host\": \"smtp.company.com\",\n      \"port\": 587,\n      \"secure\": false,\n      \"auth\": {\n        \"user\": \"noreply@company.com\",\n        \"pass\": \"smtp-password\"\n      }\n    },\n    \"notifications\": {\n      \"onFailure\": true,\n      \"onSuccess\": false,\n      \"onExecution\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"THY Payment Service - Updated\",\n  \"description\": \"Updated Turkish Airlines payment processing scenarios\",\n  \"status\": \"active\",\n  \"metadata\": {\n    \"domain\": \"payment\",\n    \"priority\": \"critical\",\n    \"environment\": \"production\",\n    \"version\": \"2.0\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Project",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/projects/{{projectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "projects", "{{projectId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Teams",
+      "item": [
+        {
+          "name": "Get All Teams",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams?page=1&limit=10&search=Demo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "Demo"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Team by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams/{{teamId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams", "{{teamId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Payment Team\",\n  \"description\": \"Team responsible for payment processing scenarios\",\n  \"settings\": {\n    \"allowSelfJoin\": false,\n    \"requireApproval\": true,\n    \"maxMembers\": 10\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Payment Team - Updated\",\n  \"description\": \"Updated team responsible for payment processing scenarios\",\n  \"settings\": {\n    \"allowSelfJoin\": true,\n    \"requireApproval\": false,\n    \"maxMembers\": 15\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams/{{teamId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams", "{{teamId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Member to Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"roles\": [\"analyst\", \"developer\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams/{{teamId}}/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams", "{{teamId}}", "members"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Member from Team",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams/{{teamId}}/members/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams", "{{teamId}}", "members", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Team",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/teams/{{teamId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "teams", "{{teamId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&limit=10&status=active&search=admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                },
+                {
+                  "key": "search",
+                  "value": "admin"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Super\",\n  \"lastName\": \"Administrator\",\n  \"department\": \"IT Operations\",\n  \"position\": \"Senior System Administrator\",\n  \"status\": \"active\",\n  \"globalRoles\": [\"super-admin\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", "{{userId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        {
+          "name": "Get All Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Role by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles", "{{roleId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"qa-engineer\",\n  \"displayName\": \"QA Engineer\",\n  \"description\": \"Quality assurance engineer with testing permissions\",\n  \"type\": \"project\",\n  \"level\": 5,\n  \"permissions\": [\n    \"project.view\",\n    \"scenario.create\",\n    \"scenario.view\",\n    \"scenario.edit\",\n    \"scenario.execute\",\n    \"execution.view\",\n    \"execution.execute\",\n    \"analytics.view\"\n  ],\n  \"assignable\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"qa-engineer\",\n  \"displayName\": \"Senior QA Engineer\",\n  \"description\": \"Senior quality assurance engineer with advanced testing permissions\",\n  \"type\": \"project\",\n  \"level\": 6,\n  \"permissions\": [\n    \"project.view\",\n    \"project.edit\",\n    \"scenario.create\",\n    \"scenario.view\",\n    \"scenario.edit\",\n    \"scenario.execute\",\n    \"scenario.manage\",\n    \"execution.view\",\n    \"execution.execute\",\n    \"execution.manage\",\n    \"analytics.view\",\n    \"analytics.export\"\n  ],\n  \"assignable\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles", "{{roleId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "roles", "{{roleId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Scenarios",
+      "item": [
+        {
+          "name": "Get All Scenarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios?page=1&limit=10&status=draft&search=payment",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "draft"
+                },
+                {
+                  "key": "search",
+                  "value": "payment"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Scenario by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios/{{scenarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios", "{{scenarioId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Scenario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('scenarioId', response._id);",
+                  "    console.log('Scenario ID saved:', response._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Payment Flow Test\",\n  \"description\": \"Test payment processing flow for THY\",\n  \"project\": \"{{projectId}}\",\n  \"owner\": \"{{userId}}\",\n  \"visibility\": \"team\",\n  \"nodes\": [\n    {\n      \"id\": \"node-1\",\n      \"type\": \"custom\",\n      \"position\": {\n        \"x\": 100,\n        \"y\": 100\n      },\n      \"data\": {\n        \"label\": \"POST /payment/init\",\n        \"method\": \"POST\",\n        \"url\": \"https://api.thy.com/payment/init\",\n        \"headers\": {\n          \"Content-Type\": \"application/json\",\n          \"Authorization\": \"Bearer {{token}}\"\n        },\n        \"body\": {\n          \"amount\": 1000,\n          \"currency\": \"TRY\",\n          \"orderId\": \"ORDER-123\"\n        },\n        \"assertions\": [\n          {\n            \"type\": \"status\",\n            \"field\": \"status\",\n            \"operator\": \"equals\",\n            \"expected\": \"200\",\n            \"description\": \"Payment initialization should return 200\"\n          }\n        ],\n        \"timeout\": 30000,\n        \"retries\": 3\n      }\n    },\n    {\n      \"id\": \"node-2\",\n      \"type\": \"custom\",\n      \"position\": {\n        \"x\": 400,\n        \"y\": 100\n      },\n      \"data\": {\n        \"label\": \"GET /payment/status\",\n        \"method\": \"GET\",\n        \"url\": \"https://api.thy.com/payment/status/{{paymentId}}\",\n        \"headers\": {\n          \"Authorization\": \"Bearer {{token}}\"\n        },\n        \"assertions\": [\n          {\n            \"type\": \"body\",\n            \"field\": \"status\",\n            \"operator\": \"equals\",\n            \"expected\": \"completed\",\n            \"description\": \"Payment should be completed\"\n          }\n        ],\n        \"timeout\": 30000,\n        \"retries\": 3\n      }\n    }\n  ],\n  \"edges\": [\n    {\n      \"id\": \"edge-1\",\n      \"source\": \"node-1\",\n      \"target\": \"node-2\",\n      \"type\": \"default\",\n      \"animated\": true\n    }\n  ],\n  \"variables\": {\n    \"baseUrl\": \"https://api.thy.com\",\n    \"timeout\": \"30000\"\n  },\n  \"settings\": {\n    \"timeout\": 300000,\n    \"parallel\": false,\n    \"retryOnFailure\": true,\n    \"maxRetries\": 3\n  },\n  \"tags\": [\"payment\", \"thy\", \"critical\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Scenario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Payment Flow Test - Updated\",\n  \"description\": \"Updated test payment processing flow for THY\",\n  \"visibility\": \"project\",\n  \"tags\": [\"payment\", \"thy\", \"critical\", \"updated\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios/{{scenarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios", "{{scenarioId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate Scenario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios/{{scenarioId}}/duplicate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios", "{{scenarioId}}", "duplicate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Scenario Executions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios/{{scenarioId}}/executions?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios", "{{scenarioId}}", "executions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Scenario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/scenarios/{{scenarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "scenarios", "{{scenarioId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Execution",
+      "item": [
+        {
+          "name": "Start Scenario Execution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('executionId', response.executionId);",
+                  "    console.log('Execution ID saved:', response.executionId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variables\": {\n    \"baseUrl\": \"https://api.thy.com\",\n    \"timeout\": \"30000\",\n    \"paymentId\": \"PAY-123456\"\n  },\n  \"settings\": {\n    \"timeout\": 300000,\n    \"parallel\": false,\n    \"retryOnFailure\": true,\n    \"maxRetries\": 3\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/execution/start/{{scenarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "execution", "start", "{{scenarioId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Execution Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/execution/{{executionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "execution", "{{executionId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stop Execution",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/execution/{{executionId}}/stop",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "execution", "{{executionId}}", "stop"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set base URL if not set",
+          "if (!pm.collectionVariables.get('baseUrl')) {",
+          "    pm.collectionVariables.set('baseUrl', 'http://localhost:3001');",
+          "}"
+        ]
+      }
+    }
+  ]
+}

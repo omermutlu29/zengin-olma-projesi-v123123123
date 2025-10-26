@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthWrapper';
 
@@ -7,6 +7,13 @@ const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Dark mode state
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
   
   // Current path'den active menu'yu belirle
   const getActiveMenu = () => {
@@ -106,6 +113,17 @@ const AdminLayout = ({ children }) => {
 
           <div className="header-right">
             <div className="header-actions">
+              {/* Dark mode toggle */}
+              <label className="switch" title="Toggle dark mode">
+                <span className="small">🌞</span>
+                <input
+                  type="checkbox"
+                  checked={theme === "dark"}
+                  onChange={(e) => setTheme(e.target.checked ? "dark" : "light")}
+                />
+                <span className="small">🌙</span>
+              </label>
+
               <button className="action-btn" title="Notifications">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" strokeWidth="2"/>

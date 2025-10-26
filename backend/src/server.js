@@ -10,7 +10,7 @@ import { adminRoutes } from './routes/admin.js';
 import { websocketHandler } from './websocket/handler.js';
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: './env.local' });
 
 const fastify = Fastify({
   logger: {
@@ -24,25 +24,17 @@ const fastify = Fastify({
 // Register plugins
 await fastify.register(cors, {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    const allowed = process.env.CORS_ORIGIN?.split(",") || [];
+
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:5174',
-      'http://localhost:5175',
-      'http://127.0.0.1:5174',
-      'http://127.0.0.1:5175'
-    ];
-    
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    return callback(new Error('Not allowed by CORS'), false);
+    if (allowed.length === 0 || allowed.includes("*")) return callback(null, true);
+    if (allowed.includes(origin)) return callback(null, true);
+
+    return callback(new Error("Not allowed by CORS"), false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 });
 
 await fastify.register(websocket);

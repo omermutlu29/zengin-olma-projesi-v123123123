@@ -4,10 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5174",
-    "build": "vite build",
-    "preview": "vite preview --port ${PORT:-5174} --host",
-    "start": "npm run preview"
+    "dev": "vite",
+    "build": "vite build"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -18,6 +16,7 @@
   },
   "devDependencies": {
     "vite": "^5.4.8",
-    "@vitejs/plugin-react": "^4.3.2"
+    "@vitejs/plugin-react": "^4.3.2",
+    "terser": "^5.36.0"
   }
 }
